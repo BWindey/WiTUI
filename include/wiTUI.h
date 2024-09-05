@@ -1,32 +1,80 @@
 #pragma once
 
-typedef struct wiBox {
-	char* title;
-	char* content;
-	int width;
-} wiBox;
+#include <stdbool.h>
 
-typedef struct wiRow {
-	char** elements;
-	wiBox* extraInfo;
-} wiRow;
+typedef struct wiPosition {
+	int x;
+	int y;
+} wiPosition;
 
-typedef struct wiShortcuts {
-	char quit;
-	char up;
-	char down;
+typedef enum wiModifier {
+	CTRL, ALT, SHIFT, SUPER
+} wiModifier;
+
+typedef struct wiMovementKeys {
 	char left;
 	char right;
-} wiShortcuts;
+	char up;
+	char down;
+	wiModifier modifierKey;
+} wiMovementKeys;
 
-typedef struct wiTable {
+typedef struct wiBorder {
+	char* corner1;
+	char* corner2;
+	char* corner3;
+	char* corner4;
+	char* left;
+	char* right;
+	char* top;
+	char* bottom;
+	char* foregroundColour;
+	char* backgroundColour;
+} wiBorder;
+
+typedef struct wiSession wiSession;
+typedef struct wiWindow {
+	int width;
+	int height;
+	// Al string related things will be copies
 	char* title;
-	wiRow** rows;
-	wiShortcuts* shortcuts;
-	int _rows;
-	int _collums;
-} wiTable;
+	char* footer;
+	char*** contents;
+	wiBorder border;
+	bool wrapText;
+	bool storeCursorPosition;
+	wiPosition* dependingWindows;
+	wiSession* parentSession;
+} wiWindow;
+
+typedef struct wiSession {
+	wiWindow*** windows;
+	bool fullScreen;
+	wiPosition cursorStart;
+	wiMovementKeys* movementKeys;
+} wiSession;
+
+typedef struct wiResult {
+	wiPosition lastWindow;
+	wiPosition lastCursor;
+} wiResult;
 
 
-wiTable* wiCreateTable(char* title);
-void wiFreeTable(wiTable* table);
+// Free the session, all the windows inside, and their contents
+void wiFreeSessionCompletely(wiSession* session);
+// Render the session, and return the result once exited
+wiResult wiShowSession(const wiSession* session);
+
+// Utility functions to make default windows and sessions
+wiWindow* wiMakeWindow();
+wiSession* wiMakeSession();
+
+// Utility function to do the work of adding a window to a session
+// Will place the window at the given row, unless row-1 is bigger then the
+// current amount of rows, it will place it on a new row under the last
+wiSession* wiAddWindowToSession(wiSession*, const wiWindow*, int);
+
+// Utility function to add content to a specific location. This will oxpand the
+// contents-array of the window if needed, and overwrite existing content if 
+// there is any at the location
+wiWindow* wiAddContentToWindow(wiWindow*, const char*, const wiPosition);
