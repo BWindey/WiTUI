@@ -1,33 +1,26 @@
-#include <assert.h>
+#include "../include/wiTUI.h"
+#include "../../WiEnrich/include/enrich.h"
 #include <stdlib.h>
-#include <string.h>
 
-#include "../include/wiTablesIO.h"
+wiWindow* wiMakeWindow() {
+	wiWindow* window = (wiWindow*) malloc(sizeof(wiWindow));
 
-void setDefaultShortcuts(wiShortcuts* shortcuts) {
-	assert(shortcuts != NULL);
+	window->width = 10;
+	window->height = 10;
+	window->title = "Test window";
+	window->footer = "q: quit";
 
-	shortcuts->quit = 'q';
-	shortcuts->up = 'k';
-	shortcuts->down = 'j';
-	shortcuts->left = 'h';
-	shortcuts->right = 'l';
-}
+	// Make 1x1 array initially
+	window->contents = (char***) malloc(sizeof(char**));
+	window->contents[0] = (char**) malloc(sizeof(char*));
+	window->contents[0][0] = NULL;
 
-wiTable* wiCreateTable(char* title) {
-	wiTable* table = (wiTable*) malloc(sizeof(wiTable));
-	table->title = strdup(title);
-	table->rows = NULL;
-	table->shortcuts = (wiShortcuts*) malloc(sizeof(wiShortcuts));
-	
-	setDefaultShortcuts(table->shortcuts);
+	wiBorder border = { 
+		"\u256D", "\u256E", "\u256F", "\u2570", 
+		"\u2500", "\u2500", "\u2502", "\u2502",
+		wiEnrich("[WHITE]"), wiEnrich("[DIM][WHITE]")
+	};
+	window->border = border;
 
-	return table;
-}
-
-void wiFreeTable(wiTable* table) {
-	free(table->title);
-	free(table->shortcuts);
-	// TODO: free the actual rows too when they are implemented
-	free(table);
+	return window;
 }
