@@ -3,8 +3,8 @@
 #include <stdbool.h>
 
 typedef struct wiPosition {
-	int x;
-	int y;
+	int row;
+	int col;
 } wiPosition;
 
 typedef enum wiModifier {
@@ -51,7 +51,12 @@ typedef struct wiSession {
 	wiWindow*** windows;
 	bool fullScreen;
 	wiPosition cursorStart;
-	wiMovementKeys* movementKeys;
+	wiMovementKeys movementKeys;
+
+	// Only change this outside library code if you like debugging.
+	int _internalAmountRows;
+	// Only change this outside library code if you like debugging.
+	int* _internalAmountCols;
 } wiSession;
 
 typedef struct wiResult {
@@ -72,7 +77,7 @@ wiSession* wiMakeSession();
 // Utility function to do the work of adding a window to a session
 // Will place the window at the given row, unless row-1 is bigger then the
 // current amount of rows, it will place it on a new row under the last
-wiSession* wiAddWindowToSession(wiSession*, const wiWindow*, int);
+wiSession* wiAddWindowToSession(wiSession*, wiWindow*, int);
 
 // Utility function to add content to a specific location. This will oxpand the
 // contents-array of the window if needed, and overwrite existing content if 
