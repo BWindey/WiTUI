@@ -22,7 +22,7 @@ wiWindow* wiMakeWindow() {
 
 	wiBorder border = { 
 		"\u256D", "\u256E", "\u256F", "\u2570", 
-		"\u2500", "\u2500", "\u2502", "\u2502",
+		"\u2502", "\u2502", "\u2500", "\u2500",
 		"", "\033[2m"
 	};
 	window->border = border;
@@ -31,7 +31,7 @@ wiWindow* wiMakeWindow() {
 	window->storeCursorPosition = true;
 
 	window->dependingWindows = NULL;
-	window->parentSession = NULL;
+	window->_internalAmountDepending = 0;
 
 	return window;
 }
@@ -105,6 +105,8 @@ static inline wiSession* _addWindowToSessionNewRow(wiSession* session, wiWindow*
 	wiAssert(session->windows[row] != NULL, "Failed to allocate memory while adding window to session.");
 	session->windows[row][0] = window;
 
+	// TODO: maybe use realloc behaviour that it will call like a normal
+	// 		malloc when the pointer is NULL, should make some code clearer
 	return session;
 }
 

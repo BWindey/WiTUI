@@ -137,6 +137,12 @@ but with a modifier-key held. By default this is the control-key.
 This key can be modified by the programmer.
 
 
+## Current restrictions
+This is a list of things that don't have to be completed before calling this 
+working, but are things I would like to implement:
+
+
+
 ## Aditional notes
 - There is a potential for better performance by only redrawing parts of the 
 screen that have changed. 
