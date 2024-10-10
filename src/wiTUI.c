@@ -111,5 +111,39 @@ wiResult wiShowSession(const wiSession* session) {
  * you can not use this function.
  */
 void wiFreeSessionCompletely(wiSession* session) {
-	// TODO: WIP
+	// Free all the windows... Yay
+	for (int i = 0; i < session->_internalAmountRows; i++) {
+		for (int j = 0; j < session->_internalAmountCols[i]; j++) {
+			wiFreeWindow(session->windows[i][j]);
+		}
+		free(session->windows[i]);
+	}
+	free(session->windows);
+	free(session->_internalAmountCols);
+
+	free(session->windows);
+}
+
+/* 
+ * Free the window and all contents inside.
+ *
+ * Does NOT free depending windows, only the array of pointers to them.
+ *
+ * If you want to reuse some contents or borders,
+ * you'll have to do some manual work.
+ */
+void wiFreeWindow(wiWindow* window) {
+	free(window->title);
+	free(window->footer);
+
+	free(window->dependingWindows);
+
+	for (int i = 0; i < window->_internalAmountRows; i++) {
+		for (int j = 0; j < window->_internalAmountCols[i]; j++) {
+			free(window->contents[i][j]);
+		}
+		free(window->contents[i]);
+	}
+	free(window->contents);
+	free(window->_internalAmountCols);
 }

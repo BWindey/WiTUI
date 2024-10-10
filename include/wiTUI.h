@@ -37,24 +37,28 @@ typedef struct wiWindow wiWindow;
 typedef struct wiWindow {
 	int width;
 	int height;
-	// Al string related things will be copies
+	// (HEAP)
 	char* title;
+	// (HEAP)
 	char* footer;
+	// (HEAP)
 	char*** contents;
 	wiBorder border;
 	bool wrapText;
 	bool storeCursorPosition;
+	// (HEAP)
 	wiWindow** dependingWindows;
 
 	// Only change this outside library code if you like debugging.
     int _internalAmountDepending;
 	// Only change this outside library code if you like debugging.
 	int _internalAmountRows;
-	// Only change this outside library code if you like debugging.
+	// Only change this outside library code if you like debugging (HEAP).
 	int* _internalAmountCols;
 } wiWindow;
 
 typedef struct wiSession {
+	// (HEAP)
 	wiWindow*** windows;
 	bool fullScreen;
 	wiPosition cursorStart;
@@ -62,7 +66,7 @@ typedef struct wiSession {
 
 	// Only change this outside library code if you like debugging.
 	int _internalAmountRows;
-	// Only change this outside library code if you like debugging.
+	// Only change this outside library code if you like debugging (HEAP).
 	int* _internalAmountCols;
 } wiSession;
 
@@ -72,13 +76,12 @@ typedef struct wiResult {
 } wiResult;
 
 
-void wiFreeSessionCompletely(wiSession* session);
-wiResult wiShowSession(const wiSession* session);
+void wiFreeSessionCompletely(wiSession*);
+void wiFreeWindow(wiWindow*);
+wiResult wiShowSession(const wiSession*);
 
-wiWindow* wiMakeWindow();
-wiSession* wiMakeSession();
+wiWindow* wiMakeWindow(void);
+wiSession* wiMakeSession(void);
 
 wiSession* wiAddWindowToSession(wiSession*, wiWindow*, int);
 wiWindow* wiAddContentToWindow(wiWindow*, const char*, const wiPosition);
-
-
