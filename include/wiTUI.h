@@ -2,24 +2,24 @@
 
 #include <stdbool.h>
 
-typedef struct wiPosition {
+typedef struct wi_position {
 	int row;
 	int col;
-} wiPosition;
+} wi_position;
 
-typedef enum wiModifier {
+typedef enum wi_modifier {
 	CTRL, ALT, SHIFT, SUPER
-} wiModifier;
+} wi_modifier;
 
-typedef struct wiMovementKeys {
+typedef struct wi_movement_keys {
 	char left;
 	char right;
 	char up;
 	char down;
-	wiModifier modifierKey;
-} wiMovementKeys;
+	wi_modifier modifier_key;
+} wi_movement_keys;
 
-typedef struct wiBorder {
+typedef struct wi_border {
 	char* corner_top_left;
 	char* corner_top_right;
 	char* corner_bottom_right;
@@ -30,58 +30,58 @@ typedef struct wiBorder {
 	char* side_bottom;
 	char* focussed_colour;
 	char* unfocussed_colour;
-} wiBorder;
+} wi_border;
 
-typedef struct wiSession wiSession;
-typedef struct wiWindow wiWindow;
-typedef struct wiWindow {
+typedef struct wi_session wi_session;
+typedef struct wi_window wi_window;
+typedef struct wi_window {
 	int width;
 	int height;
-	// (HEAP)
+	/* (HEAP) */
 	char* title;
-	// (HEAP)
+	/* (HEAP) */
 	char* footer;
-	// (HEAP)
+	/* (HEAP) */
 	char*** contents;
-	wiBorder border;
+	wi_border border;
 	bool wrapText;
-	bool storeCursorPosition;
-	// (HEAP)
-	wiWindow** dependingWindows;
+	bool store_cursor_position;
+	/* (HEAP) */
+	wi_window** depending_windows;
 
-	// Only change this outside library code if you like debugging.
-    int _internalAmountDepending;
-	// Only change this outside library code if you like debugging.
-	int _internalAmountRows;
-	// Only change this outside library code if you like debugging (HEAP).
-	int* _internalAmountCols;
-} wiWindow;
+	/* Only change this outside library code if you like debugging. */
+    int _internal_amount_depending;
+	/* Only change this outside library code if you like debugging. */
+	int _internal_amount_rows;
+	/* Only change this outside library code if you like debugging (HEAP). */
+	int* _internal_amount_cols;
+} wi_window;
 
-typedef struct wiSession {
-	// (HEAP)
-	wiWindow*** windows;
-	bool fullScreen;
-	wiPosition cursorStart;
-	wiMovementKeys movementKeys;
+typedef struct wi_session {
+	/* (HEAP) */
+	wi_window*** windows;
+	bool full_screen;
+	wi_position cursor_start;
+	wi_movement_keys movement_keys;
 
-	// Only change this outside library code if you like debugging.
-	int _internalAmountRows;
-	// Only change this outside library code if you like debugging (HEAP).
-	int* _internalAmountCols;
-} wiSession;
+	/* Only change this outside library code if you like debugging. */
+	int _internal_amount_rows;
+	/* Only change this outside library code if you like debugging (HEAP). */
+	int* _internal_amount_cols;
+} wi_session;
 
-typedef struct wiResult {
-	wiPosition lastWindow;
-	wiPosition lastCursor;
-} wiResult;
+typedef struct wi_result {
+	wi_position last_window;
+	wi_position last_cursor;
+} wi_result;
 
 
-void wiFreeSessionCompletely(wiSession*);
-void wiFreeWindow(wiWindow*);
-wiResult wiShowSession(const wiSession*);
+void wi_free_session_completely(wi_session*);
+void wi_free_window(wi_window*);
+wi_result wi_show_session(const wi_session*);
 
-wiWindow* wiMakeWindow(void);
-wiSession* wiMakeSession(void);
+wi_window* wi_make_window(void);
+wi_session* wi_make_session(void);
 
-wiSession* wiAddWindowToSession(wiSession*, wiWindow*, int);
-wiWindow* wiAddContentToWindow(wiWindow*, const char*, const wiPosition);
+wi_session* wi_add_window_to_session(wi_session*, wi_window*, int);
+wi_window* wi_add_content_to_window(wi_window*, const char*, const wi_position);

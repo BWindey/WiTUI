@@ -5,57 +5,57 @@
 #include <stdlib.h>
 #include <string.h>
 
-wiWindow* wiMakeWindow() {
-	wiWindow* window = (wiWindow*) malloc(sizeof(wiWindow));
+wi_window* wi_make_window(void) {
+	wi_window* window = (wi_window*) malloc(sizeof(wi_window));
 
 	window->width = 10;
 	window->height = 10;
 	window->title = strdup("Test window");
 	window->footer = strdup("q: quit");
 
-	// Starting with a 1 empty row
+	/* Starting with a 1 empty row*/
 	int rows = 1;
 	window->contents = (char***) malloc(rows * sizeof(char**));
 	window->contents[0] = NULL;
-	window->_internalAmountRows = rows;
-	window->_internalAmountCols = (int*) malloc(rows * sizeof(int*));
+	window->_internal_amount_rows = rows;
+	window->_internal_amount_cols = (int*) malloc(rows * sizeof(int*));
 
-	// Rounded corners, standard focus colour and dim unfocussed colour
-	window->border = (wiBorder) { 
+	/* Rounded corners, standard focus colour and dim unfocussed colour */
+	window->border = (wi_border) { 
 		"\u256D", "\u256E", "\u256F", "\u2570", 
 		"\u2502", "\u2502", "\u2500", "\u2500",
 		"", "\033[2m"
 	};
 
 	window->wrapText = true;
-	window->storeCursorPosition = true;
+	window->store_cursor_position = true;
 
-	window->dependingWindows = NULL;
-	window->_internalAmountDepending = 0;
+	window->depending_windows = NULL;
+	window->_internal_amount_depending = 0;
 
 	return window;
 }
 
-wiSession* wiMakeSession() {
-	wiSession* session = (wiSession*) malloc(sizeof(wiSession));
+wi_session* wi_make_session() {
+	wi_session* session = (wi_session*) malloc(sizeof(wi_session));
 
-	// Starting with a 1 empty row
+	/* Starting with a 1 empty row */
 	int rows = 1;
-	session->windows = (wiWindow***) malloc(rows * sizeof(wiWindow**));
+	session->windows = (wi_window***) malloc(rows * sizeof(wi_window**));
 	session->windows[0] = NULL;
-	session->_internalAmountRows = rows;
-	session->_internalAmountCols = (int*) malloc(rows * sizeof(int*));
+	session->_internal_amount_rows = rows;
+	session->_internal_amount_cols = (int*) malloc(rows * sizeof(int*));
 
-	session->fullScreen = false;
-	session->cursorStart = (wiPosition) { 0, 0 };
+	session->full_screen = false;
+	session->cursor_start = (wi_position) { 0, 0 };
 
-	wiMovementKeys mKeys;
+	wi_movement_keys mKeys;
 	mKeys.left = 'h';
 	mKeys.right = 'l';
 	mKeys.up = 'k';
 	mKeys.down = 'j';
-	mKeys.modifierKey = CTRL;
-	session->movementKeys = mKeys;
+	mKeys.modifier_key = CTRL;
+	session->movement_keys = mKeys;
 
 	return session;
 }
@@ -68,25 +68,25 @@ wiSession* wiMakeSession() {
  *
  * Returns the updated session.
  */
-wiSession* wiAddWindowToSession(wiSession* session, wiWindow* window, int row) {
-	// Add extra row if necessary
-	if (row >= session->_internalAmountRows) {
-		row = session->_internalAmountRows;
-		session->_internalAmountRows++;
+wi_session* wi_add_window_to_session(wi_session* session, wi_window* window, int row) {
+	/* Add extra row if necessary */
+	if (row >= session->_internal_amount_rows) {
+		row = session->_internal_amount_rows;
+		session->_internal_amount_rows++;
 
-		session->windows = realloc(session->windows, (row + 1) * sizeof(wiWindow**));
+		session->windows = realloc(session->windows, (row + 1) * sizeof(wi_window**));
 		wiAssert(session->windows != NULL, "Something went wrong while trying to add a window to a session");
 		session->windows[row] = NULL;
 
-		session->_internalAmountCols = realloc(session->_internalAmountCols, (row + 1) * sizeof(int));
-		wiAssert(session->_internalAmountCols != NULL, "Something went wrong while tring to add a window to a session");
-		session->_internalAmountCols[row] = 0;
+		session->_internal_amount_cols = realloc(session->_internal_amount_cols, (row + 1) * sizeof(int));
+		wiAssert(session->_internal_amount_cols != NULL, "Something went wrong while tring to add a window to a session");
+		session->_internal_amount_cols[row] = 0;
 	}
 
-	// Grow the row 
-	int col = session->_internalAmountCols[row];
-	session->_internalAmountCols[row]++;
-	session->windows[row] = realloc(session->windows[row], session->_internalAmountCols[row]);
+	/* Grow the row */
+	int col = session->_internal_amount_cols[row];
+	session->_internal_amount_cols[row]++;
+	session->windows[row] = realloc(session->windows[row], session->_internal_amount_cols[row]);
 
 	session->windows[row][col] = window;
 
@@ -96,10 +96,10 @@ wiSession* wiAddWindowToSession(wiSession* session, wiWindow* window, int row) {
 /*
  * Show the session and return the last cursor position
  */
-wiResult wiShowSession(const wiSession* session) {
-	wiResult cursor;
-	cursor.lastCursor = (wiPosition){ 0, 0 };
-	cursor.lastWindow = (wiPosition){ 0, 0 };
+wi_result wi_show_session(const wi_session* session) {
+	wi_result cursor;
+	cursor.last_cursor = (wi_position){ 0, 0 };
+	cursor.last_window = (wi_position){ 0, 0 };
 	
 	return cursor;
 }
@@ -110,16 +110,16 @@ wiResult wiShowSession(const wiSession* session) {
  * If you want to reuse some windows or even window-contents, 
  * you can not use this function.
  */
-void wiFreeSessionCompletely(wiSession* session) {
-	// Free all the windows... Yay
-	for (int i = 0; i < session->_internalAmountRows; i++) {
-		for (int j = 0; j < session->_internalAmountCols[i]; j++) {
-			wiFreeWindow(session->windows[i][j]);
+void wi_free_session_completely(wi_session* session) {
+	/* Free all the windows... Yay */
+	for (int i = 0; i < session->_internal_amount_rows; i++) {
+		for (int j = 0; j < session->_internal_amount_cols[i]; j++) {
+			wi_free_window(session->windows[i][j]);
 		}
 		free(session->windows[i]);
 	}
 	free(session->windows);
-	free(session->_internalAmountCols);
+	free(session->_internal_amount_cols);
 
 	free(session->windows);
 }
@@ -132,18 +132,18 @@ void wiFreeSessionCompletely(wiSession* session) {
  * If you want to reuse some contents or borders,
  * you'll have to do some manual work.
  */
-void wiFreeWindow(wiWindow* window) {
+void wi_free_window(wi_window* window) {
 	free(window->title);
 	free(window->footer);
 
-	free(window->dependingWindows);
+	free(window->depending_windows);
 
-	for (int i = 0; i < window->_internalAmountRows; i++) {
-		for (int j = 0; j < window->_internalAmountCols[i]; j++) {
+	for (int i = 0; i < window->_internal_amount_rows; i++) {
+		for (int j = 0; j < window->_internal_amount_cols[i]; j++) {
 			free(window->contents[i][j]);
 		}
 		free(window->contents[i]);
 	}
 	free(window->contents);
-	free(window->_internalAmountCols);
+	free(window->_internal_amount_cols);
 }
