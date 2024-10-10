@@ -13,19 +13,19 @@ wiWindow* wiMakeWindow() {
 	window->title = strdup("Test window");
 	window->footer = strdup("q: quit");
 
-	// Make 1x1 array initially
-	int rows = 1, cols = 1;
+	// Starting with a 1 empty row
+	int rows = 1;
 	window->contents = (char***) malloc(rows * sizeof(char**));
-	for (int i = 0; i < rows; i++) {
-		window->contents[i] = (char**) malloc(cols * sizeof(char*));
-	}
+	window->contents[0] = NULL;
+	window->_internalAmountRows = rows;
+	window->_internalAmountCols = (int*) malloc(rows * sizeof(int*));
 
-	wiBorder border = { 
+	// Rounded corners, standard focus colour and dim unfocussed colour
+	window->border = (wiBorder) { 
 		"\u256D", "\u256E", "\u256F", "\u2570", 
 		"\u2502", "\u2502", "\u2500", "\u2500",
 		"", "\033[2m"
 	};
-	window->border = border;
 
 	window->wrapText = true;
 	window->storeCursorPosition = true;
@@ -39,12 +39,12 @@ wiWindow* wiMakeWindow() {
 wiSession* wiMakeSession() {
 	wiSession* session = (wiSession*) malloc(sizeof(wiSession));
 
-	// Starting with a 1x1 initially
-	int rows = 1, cols = 1;
+	// Starting with a 1 empty row
+	int rows = 1;
 	session->windows = (wiWindow***) malloc(rows * sizeof(wiWindow**));
-	for (int i = 0; i < rows; i++) {
-		session->windows[i] = (wiWindow**) malloc(cols * sizeof(wiWindow*));
-	}
+	session->windows[0] = NULL;
+	session->_internalAmountRows = rows;
+	session->_internalAmountCols = (int*) malloc(rows * sizeof(int*));
 
 	session->fullScreen = false;
 	session->cursorStart = (wiPosition) { 0, 0 };
@@ -57,56 +57,6 @@ wiSession* wiMakeSession() {
 	mKeys.modifierKey = CTRL;
 	session->movementKeys = mKeys;
 
-	session->_internalAmountRows = rows;
-	session->_internalAmountCols = (int*) malloc (cols * sizeof(int));
-	for (int i = 0; i < rows; i++) {
-		session->_internalAmountCols[i] = cols;
-	}
-
-	return session;
-}
-
-// Help function of wiAddWindowToSession()
-static inline wiSession* _addWindowToSessionExistingRow(wiSession* session, wiWindow* window, int row) {
-	printf("Adding window to existing row\n");
-	// Update internal size
-	int col = session->_internalAmountCols[row];
-	session->_internalAmountCols[row]++;
-	printf("Added window to row %i, which now has %i cols\n", row, col+1);
-
-	// Grow row by 1
-	session->windows[row] = (wiWindow**) realloc((void*) session->windows[row], (col + 1) * sizeof(wiWindow*));
-	wiAssert(session->windows != NULL, "Failed to reallocate memory while adding window to session.");
-
-	// Add window to row
-	session->windows[row][col] = window;
-
-	return session;
-}
-
-// Help function of wiAddWindowToSession()
-static inline wiSession* _addWindowToSessionNewRow(wiSession* session, wiWindow* window, int row) {
-	row = session->_internalAmountRows;
-
-	// Update internal size
-	session->_internalAmountCols = (int*) realloc(session->_internalAmountCols, session->_internalAmountRows * sizeof(int));
-	session->_internalAmountCols[row] = 1;
-	session->_internalAmountRows++;
-
-	// Grow row by 1
-	session->windows = (wiWindow***) realloc(
-			session->windows,
-			session->_internalAmountRows * sizeof(wiWindow**)
-			);
-	wiAssert(session->windows != NULL, "Failed to reallocate memory while adding window to session.");
-
-	// Add window to the end of the row
-	session->windows[row] = (wiWindow**) malloc(1 * sizeof(wiWindow*));
-	wiAssert(session->windows[row] != NULL, "Failed to allocate memory while adding window to session.");
-	session->windows[row][0] = window;
-
-	// TODO: maybe use realloc behaviour that it will call like a normal
-	// 		malloc when the pointer is NULL, should make some code clearer
 	return session;
 }
 
@@ -121,9 +71,26 @@ static inline wiSession* _addWindowToSessionNewRow(wiSession* session, wiWindow*
 wiSession* wiAddWindowToSession(wiSession* session, wiWindow* window, int row) {
 	// Add extra row if necessary
 	if (row >= session->_internalAmountRows) {
-		return _addWindowToSessionNewRow(session, window, row);
+		row = session->_internalAmountRows;
+		session->_internalAmountRows++;
+
+		session->windows = realloc(session->windows, (row + 1) * sizeof(wiWindow**));
+		wiAssert(session->windows != NULL, "Something went wrong while trying to add a window to a session");
+		session->windows[row] = NULL;
+
+		session->_internalAmountCols = realloc(session->_internalAmountCols, (row + 1) * sizeof(int));
+		wiAssert(session->_internalAmountCols != NULL, "Something went wrong while tring to add a window to a session");
+		session->_internalAmountCols[row] = 0;
 	}
-	return _addWindowToSessionExistingRow(session, window, row);
+
+	// Grow the row 
+	int col = session->_internalAmountCols[row];
+	session->_internalAmountCols[row]++;
+	session->windows[row] = realloc(session->windows[row], session->_internalAmountCols[row]);
+
+	session->windows[row][col] = window;
+
+	return session;
 }
 
 /*
