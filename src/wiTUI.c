@@ -18,7 +18,8 @@ wi_window* wi_make_window(void) {
 	window->contents = (char***) malloc(rows * sizeof(char**));
 	window->contents[0] = NULL;
 	window->_internal_amount_rows = rows;
-	window->_internal_amount_cols = (int*) malloc(rows * sizeof(int*));
+	window->_internal_amount_cols = (int*) malloc(rows * sizeof(int));
+	window->_internal_amount_cols[0] = 0;
 
 	/* Rounded corners, standard focus colour and dim unfocussed colour */
 	window->border = (wi_border) { 
@@ -44,7 +45,8 @@ wi_session* wi_make_session() {
 	session->windows = (wi_window***) malloc(rows * sizeof(wi_window**));
 	session->windows[0] = NULL;
 	session->_internal_amount_rows = rows;
-	session->_internal_amount_cols = (int*) malloc(rows * sizeof(int*));
+	session->_internal_amount_cols = (int*) malloc(rows * sizeof(int));
+	session->_internal_amount_cols[0] = 0;
 
 	session->full_screen = false;
 	session->cursor_start = (wi_position) { 0, 0 };
@@ -86,7 +88,8 @@ wi_session* wi_add_window_to_session(wi_session* session, wi_window* window, int
 	/* Grow the row */
 	int col = session->_internal_amount_cols[row];
 	session->_internal_amount_cols[row]++;
-	session->windows[row] = realloc(session->windows[row], session->_internal_amount_cols[row]);
+	session->windows[row] = realloc(session->windows[row], session->_internal_amount_cols[row] * sizeof(wi_window*));
+	wiAssert(session->windows[row] != NULL, "Something went wrong while tring to add a window to a session");
 
 	session->windows[row][col] = window;
 
@@ -97,6 +100,7 @@ wi_session* wi_add_window_to_session(wi_session* session, wi_window* window, int
  * Show the session and return the last cursor position
  */
 wi_result wi_show_session(const wi_session* session) {
+	/* TODO: */
 	wi_result cursor;
 	cursor.last_cursor = (wi_position){ 0, 0 };
 	cursor.last_window = (wi_position){ 0, 0 };
@@ -120,8 +124,6 @@ void wi_free_session_completely(wi_session* session) {
 	}
 	free(session->windows);
 	free(session->_internal_amount_cols);
-
-	free(session->windows);
 }
 
 /* 
