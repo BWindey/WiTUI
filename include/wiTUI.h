@@ -20,16 +20,16 @@ typedef struct wiMovementKeys {
 } wiMovementKeys;
 
 typedef struct wiBorder {
-	char* corner1;
-	char* corner2;
-	char* corner3;
-	char* corner4;
-	char* left;
-	char* right;
-	char* top;
-	char* bottom;
-	char* foregroundColour;
-	char* backgroundColour;
+	char* corner_top_left;
+	char* corner_top_right;
+	char* corner_bottom_right;
+	char* corner_bottom_left;
+	char* side_left;
+	char* side_right;
+	char* side_top;
+	char* side_bottom;
+	char* focussed_colour;
+	char* unfocussed_colour;
 } wiBorder;
 
 typedef struct wiSession wiSession;
@@ -48,6 +48,10 @@ typedef struct wiWindow {
 
 	// Only change this outside library code if you like debugging.
     int _internalAmountDepending;
+	// Only change this outside library code if you like debugging.
+	int _internalAmountRows;
+	// Only change this outside library code if you like debugging.
+	int* _internalAmountCols;
 } wiWindow;
 
 typedef struct wiSession {
