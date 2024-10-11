@@ -2,6 +2,7 @@
 #include "../../WiTesting/wiAssert.h"
 
 #include <stdbool.h>
+#include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
 
@@ -104,7 +105,37 @@ wi_result wi_show_session(const wi_session* session) {
 	wi_result cursor;
 	cursor.last_cursor = (wi_position){ 0, 0 };
 	cursor.last_window = (wi_position){ 0, 0 };
-	
+
+	wi_window* first_window = session->windows[0][0];
+	wi_border border = first_window->border;
+
+	/* Top border */
+	printf("%s", border.corner_top_left);
+
+	for (int i = 0; i < first_window->width; i++) {
+		printf("%s", border.side_top);
+	}
+
+	printf("%s\n", border.corner_top_right);
+
+	/* Contents (empty for now) */
+	for (int i = 0; i < first_window->height; i++) {
+		printf("%s", border.side_left);
+		for (int j = 0; j < first_window->width; j++) {
+			printf(" "); 		/* This will need to print content */
+		}
+		printf("%s\n", border.side_right);
+	}
+
+	/* Top border */
+	printf("%s", border.corner_bottom_left);
+
+	for (int i = 0; i < first_window->width; i++) {
+		printf("%s", border.side_bottom);
+	}
+
+	printf("%s\n", border.corner_bottom_right);
+
 	return cursor;
 }
 
