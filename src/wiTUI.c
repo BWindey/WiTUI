@@ -124,6 +124,7 @@ void wi_free_session_completely(wi_session* session) {
 	}
 	free(session->windows);
 	free(session->_internal_amount_cols);
+	free(session);
 }
 
 /* 
@@ -148,4 +149,5 @@ void wi_free_window(wi_window* window) {
 	}
 	free(window->contents);
 	free(window->_internal_amount_cols);
+	free(window);
 }
