@@ -2,6 +2,7 @@
 #include <stdio.h>
 #include <string.h>
 #include <sys/ioctl.h>
+#include <stdlib.h>
 #include "../include/wiTUI.h"
 
 typedef struct terminal_size {
@@ -134,18 +135,22 @@ int main(void)
 	wi_add_window_to_session(session, window3, 1);
 
 	window1->border.focussed_colour = "\033[94m";
-	window1->title = " This is a nice title ";
+	free(window1->title);
+	window1->title = strdup(" This is a nice title ");
 	window1->width = 40;
 
 	window2->border.focussed_colour = "\033[92m";
 	window2->width = -1;
 
 	window3->border.focussed_colour = "\033[91m";
-	window3->title = " The green window has the standard title ";
+	free(window3->title);
+	window3->title = strdup(" The green window has the standard title ");
 	window3->width = -1;
 	window3->height = 15;
 
 	render_frame(session);
+
+	wi_free_session_completely(session);
 
 	return 0;
 }
