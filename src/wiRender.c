@@ -1,5 +1,6 @@
 #include <stdbool.h>
 #include <stdio.h>
+#include <string.h>
 #include <sys/ioctl.h>
 #include "../include/wiTUI.h"
 
@@ -40,6 +41,87 @@ terminal_size get_terminal_size() {
 	return (terminal_size) { max.ws_row, max.ws_col };
 }
 
+void render_window(const wi_window* window, int horizontal_offset) {
+	wi_border border = window->border;
+
+	/* Top border */
+	cursor_move_horizontal(horizontal_offset);
+	printf("%s", border.focussed_colour);
+	printf("%s", border.corner_top_left);
+
+	/* Print title */
+	int current_width = 0;
+	while (current_width < window->width && window->title[current_width]) {
+		printf("%c", window->title[current_width]);
+		current_width++;
+	}
+	/* Fill rest of top-border */
+	while (current_width < window->width) {
+		printf("%s", border.side_top);
+		current_width++;
+	}
+	printf("%s\n", border.corner_top_right);
+
+	/* Contents (empty for now) */
+	for (int i = 0; i < window->height; i++) {
+	cursor_move_horizontal(horizontal_offset);
+		printf("%s", border.side_left);
+		for (int j = 0; j < window->width; j++) {
+			printf("\033[0m%c%s", 'c', border.focussed_colour); 		/* This will need to print content */
+		}
+		printf("%s\n", border.side_right);
+	}
+
+	/* Print footer, some calculations because it is right-aligned */
+	current_width = 0;
+	int footer_length = strlen(window->footer);
+	int footer_padding_length = window->width - footer_length;
+
+	if (footer_padding_length < 0) {
+		footer_padding_length = 0;
+		footer_length = window->width;
+	}
+	cursor_move_horizontal(horizontal_offset);
+	printf("%s", border.corner_bottom_left);
+
+	for (int _ = 0; _ < footer_padding_length; _++) {
+		printf("%s", border.side_bottom);
+	}
+	printf("%.*s", footer_length, window->footer);
+
+	printf("%s\033[0m\n", border.corner_bottom_right);
+}
+
+void render_frame(const wi_session* session) {
+	int accumulated_row_width;
+	int max_row_height;
+
+	wi_window* window;
+
+	for (int row = 0; row < session->_internal_amount_rows; row++) {
+		accumulated_row_width = 0;
+		max_row_height = 0;
+
+		for (int col = 0; col < session->_internal_amount_cols[row]; col++) {
+			window = session->windows[row][col];
+
+			if (window->width == -1 && col < session->_internal_amount_cols[row]) {
+				window->width = get_terminal_size().cols - accumulated_row_width - 2;
+			}
+
+			render_window(window, accumulated_row_width);
+			cursor_move_vertical(window->height + 2);
+
+			accumulated_row_width += window->width + 2;
+			if (window->height + 2 > max_row_height) {
+				max_row_height = window->height + 2;
+			}
+		}
+
+		cursor_move_vertical(-max_row_height);
+	}
+}
+
 int main(void)
 {
 	wi_window* window1 = wi_make_window();
@@ -52,104 +134,18 @@ int main(void)
 	wi_add_window_to_session(session, window3, 1);
 
 	window1->border.focussed_colour = "\033[94m";
+	window1->title = " This is a nice title ";
 	window1->width = 40;
-	window1->height = 5;
 
 	window2->border.focussed_colour = "\033[92m";
-	window2->width = 20;
+	window2->width = -1;
 
 	window3->border.focussed_colour = "\033[91m";
-	window3->width = 80;
+	window3->title = " The green window has the standard title ";
+	window3->width = -1;
 	window3->height = 15;
 
-	/* Proof of concept drawing */
-	wi_border border = window1->border;
-
-	/* Top border */
-	printf("%s", border.focussed_colour);
-	printf("%s", border.corner_top_left);
-	for (int i = 0; i < window1->width; i++) {
-		printf("%s", border.side_top);
-	}
-	printf("%s\n", border.corner_top_right);
-
-	/* Contents (empty for now) */
-	for (int i = 0; i < window1->height; i++) {
-		printf("%s", border.side_left);
-		for (int j = 0; j < window1->width; j++) {
-			printf("\033[0m%c%s", '1', border.focussed_colour); 		/* This will need to print content */
-		}
-		printf("%s\n", border.side_right);
-	}
-
-	/* Bottom border */
-	printf("%s", border.corner_bottom_left);
-	for (int i = 0; i < window1->width; i++) {
-		printf("%s", border.side_bottom);
-	}
-	printf("%s\033[0m\n", border.corner_bottom_right);
-
-	/* --------------------------------------------- */
-
-	cursor_move_vertical(window1->height + 2);
-	cursor_move_horizontal(window1->width + 2);
-
-	border = window2->border;
-
-	/* Top border */
-	printf("%s", border.focussed_colour);
-	printf("%s", border.corner_top_left);
-	for (int i = 0; i < window2->width; i++) {
-		printf("%s", border.side_top);
-	}
-	printf("%s\n", border.corner_top_right);
-
-	/* Contents (empty for now) */
-	for (int i = 0; i < window2->height; i++) {
-		cursor_move_horizontal(window1->width + 2);
-		printf("%s", border.side_left);
-		for (int j = 0; j < window2->width; j++) {
-			printf("\033[0m%c%s", '2', border.focussed_colour); 		/* This will need to print content */
-		}
-		printf("%s\n", border.side_right);
-	}
-
-	/* Bottom border */
-	cursor_move_horizontal(window1->width + 2);
-	printf("%s", border.corner_bottom_left);
-	for (int i = 0; i < window2->width; i++) {
-		printf("%s", border.side_bottom);
-	}
-	printf("%s\033[0m\n", border.corner_bottom_right);
-
-	/* --------------------------------------------- */
-
-	border = window3->border;
-
-	/* Top border */
-	printf("%s", border.focussed_colour);
-	printf("%s", border.corner_top_left);
-	for (int i = 0; i < window3->width; i++) {
-		printf("%s", border.side_top);
-	}
-	printf("%s\n", border.corner_top_right);
-
-	/* Contents (empty for now) */
-	for (int i = 0; i < window3->height; i++) {
-		printf("%s", border.side_left);
-		for (int j = 0; j < window3->width; j++) {
-			printf("\033[0m%c%s", '3', border.focussed_colour); 		/* This will need to print content */
-		}
-		printf("%s\n", border.side_right);
-	}
-
-	/* Bottom border */
-	printf("%s", border.corner_bottom_left);
-	for (int i = 0; i < window3->width; i++) {
-		printf("%s", border.side_bottom);
-	}
-	printf("%s\033[0m\n", border.corner_bottom_right);
-
+	render_frame(session);
 
 	return 0;
 }
