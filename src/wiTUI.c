@@ -1,15 +1,16 @@
-#include "../include/wiTUI.h"
-#include "../../WiTesting/wiAssert.h"
+#include "../include/wiTUI.h"			/* declarations */
+#include "../../WiTesting/wiAssert.h"	/* wiAssert() */
 
-#include <stdbool.h>
-#include <stdio.h>
-#include <stdlib.h>
-#include <string.h>
+#include <stdbool.h>	/* true, false */
+#include <stdlib.h>		/* malloc(), realloc(), free() */
+#include <string.h>		/* strdup() */
 
 wi_window* wi_make_window(void) {
 	wi_window* window = (wi_window*) malloc(sizeof(wi_window));
 
 	window->width = 10;
+	window->_internal_rendered_width = 10;
+	window->_internal_rendered_height = 10;
 	window->height = 10;
 	window->title = strdup("Test window");
 	window->footer = strdup("q: quit");
@@ -63,14 +64,6 @@ wi_session* wi_make_session() {
 	return session;
 }
 
-/*
- * Add a window to a session on a specified row.
- * This will do all the work so the caller doesn't have to.
- * When the row is bigger then the current amount of rows +1,
- * the window will be placed on a new row below the current last row.
- *
- * Returns the updated session.
- */
 wi_session* wi_add_window_to_session(wi_session* session, wi_window* window, int row) {
 	/* Add extra row if necessary */
 	if (row >= session->_internal_amount_rows) {
@@ -97,57 +90,6 @@ wi_session* wi_add_window_to_session(wi_session* session, wi_window* window, int
 	return session;
 }
 
-/*
- * Show the session and return the last cursor position
- */
-wi_result wi_show_session(const wi_session* session) {
-	/* TODO: */
-	wi_result cursor;
-	cursor.last_cursor = (wi_position){ 0, 0 };
-	cursor.last_window = (wi_position){ 0, 0 };
-
-	for (int row = 0; row < session->_internal_amount_rows; row++) {
-		wi_window* window = session->windows[row][0];
-		wi_border border = window->border;
-
-		/* Top border */
-		printf("%s", border.focussed_colour);
-		printf("%s", border.corner_top_left);
-
-		for (int i = 0; i < window->width; i++) {
-			printf("%s", border.side_top);
-		}
-
-		printf("%s\n", border.corner_top_right);
-
-		/* Contents (empty for now) */
-		for (int i = 0; i < window->height; i++) {
-			printf("%s", border.side_left);
-			for (int j = 0; j < window->width; j++) {
-				printf("\033[0m%c%s", 'c', border.focussed_colour); 		/* This will need to print content */
-			}
-			printf("%s\n", border.side_right);
-		}
-
-		/* Top border */
-		printf("%s", border.corner_bottom_left);
-
-		for (int i = 0; i < window->width; i++) {
-			printf("%s", border.side_bottom);
-		}
-
-		printf("%s\033[0m\n", border.corner_bottom_right);
-	}
-
-	return cursor;
-}
-
-/*
- * Free the session and all windows inside.
- * 
- * If you want to reuse some windows or even window-contents, 
- * you can not use this function.
- */
 void wi_free_session_completely(wi_session* session) {
 	/* Free all the windows... Yay */
 	for (int i = 0; i < session->_internal_amount_rows; i++) {
@@ -161,14 +103,6 @@ void wi_free_session_completely(wi_session* session) {
 	free(session);
 }
 
-/* 
- * Free the window and all contents inside.
- *
- * Does NOT free depending windows, only the array of pointers to them.
- *
- * If you want to reuse some contents or borders,
- * you'll have to do some manual work.
- */
 void wi_free_window(wi_window* window) {
 	free(window->title);
 	free(window->footer);

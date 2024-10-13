@@ -55,6 +55,10 @@ typedef struct wi_window {
 	int _internal_amount_rows;
 	/* Only change this outside library code if you like debugging (HEAP). */
 	int* _internal_amount_cols;
+	/* Only change this outside library code if you like debugging. */
+	int _internal_rendered_width;
+	/* Only change this outside library code if you like debugging. */
+	int _internal_rendered_height;
 } wi_window;
 
 typedef struct wi_session {
@@ -76,12 +80,96 @@ typedef struct wi_result {
 } wi_result;
 
 
+/* 
+ * Free the session and all windows inside.
+ * 
+ * If you want to reuse some windows or even window-contents, 
+ * you can not use this function.
+ *
+ * @returns: void
+ */
 void wi_free_session_completely(wi_session*);
+
+/* 
+ * Free the window and all contents inside.
+ *
+ * Does NOT free depending windows, only the array of pointers to them.
+ *
+ * If you want to reuse some contents or borders,
+ * you'll have to do some manual work.
+ *
+ * @returns: void
+ */
 void wi_free_window(wi_window*);
+
+/* 
+ * Render a session to the screen, and take in user input. 
+ * Quits when the right key is pressed (see session.movement_keys).
+ *
+ * @returns: last cursor position (which window + which coordinate).
+ */
 wi_result wi_show_session(const wi_session*);
 
+/* 
+ * Create a window on the heap like the other functions expect.
+ * Sets the following defaults:
+ * 		- width = 10
+ * 		- height = 10
+ * 		- title = "Test window"
+ * 		- footer = "q: quit"
+ * 		- contents - empty
+ * 		- border - unicode rounded borders and full-length lines
+ * 		- wrap_text = true
+ * 		- store_cursor_position = true
+ * 		- depending_windows = NULL
+ * 
+ * See the library README.md for more details.
+ * 
+ * @returns: created window
+ */
 wi_window* wi_make_window(void);
+/* 
+ * Create a session on the heap like the other functions expect.
+ * Sets the following default:
+ *		- windows - empty
+ *		- full_screen = false
+ *		- cursor_start = { 0, 0 }
+ *		- movement_keys = { h, j ,k, l, CTRL }
+ *
+ * See the library README.md for more detaisl.
+ *
+ * @returns: created window
+ */
 wi_session* wi_make_session(void);
 
-wi_session* wi_add_window_to_session(wi_session*, wi_window*, int);
-wi_window* wi_add_content_to_window(wi_window*, const char*, const wi_position);
+/* 
+ * Add window to an existing session at given row.
+ * This function handles all the memory-management for you.
+ * When the row is bigger then the current amount of rows +1,
+ * the window will be placed on a new row below the current last row.
+ *
+ * @returns: updated session
+ */
+wi_session* wi_add_window_to_session(wi_session*, wi_window*, int row);
+/*
+ * Add content-string to an existing window at the given position.
+ * If position.row > window.amount_rows, then the content will be placed on a 
+ * new row directly below the previous last row.
+ * If position.column > window[position.row].amount_columns, then the content
+ * will be placed as last item in that row.
+ *
+ * To get empty contents, add empty strings as content.
+ * To have the effect of falling back to previous content at some positions, add
+ * NULL as content. See the README of this library for more info.
+ *
+ * @returns: updated window
+ */
+wi_window* wi_add_content_to_window(wi_window*, const char* content, const wi_position);
+
+/* 
+ * Set title of a window. 
+ * This function assumes the previous title was set by malloc, and frees it. 
+ *
+ * @returns: updated window
+ */
+wi_window* wi_set_window_title(wi_window*, char* title);
