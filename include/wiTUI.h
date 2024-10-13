@@ -103,12 +103,18 @@ void wi_free_session_completely(wi_session*);
 void wi_free_window(wi_window*);
 
 /* 
+ * Print out one frame.
+ *
+ * @returns: height of printed frame.
+ */
+int wi_render_frame(wi_session*);
+/* 
  * Render a session to the screen, and take in user input. 
  * Quits when the right key is pressed (see session.movement_keys).
  *
  * @returns: last cursor position (which window + which coordinate).
  */
-wi_result wi_show_session(const wi_session*);
+wi_result wi_show_session(wi_session*);
 
 /* 
  * Create a window on the heap like the other functions expect.
