@@ -16,6 +16,7 @@ typedef struct wi_movement_keys {
 	char right;
 	char up;
 	char down;
+	char quit;
 	wi_modifier modifier_key;
 } wi_movement_keys;
 

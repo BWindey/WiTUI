@@ -58,6 +58,7 @@ wi_session* wi_make_session() {
 	mKeys.right = 'l';
 	mKeys.up = 'k';
 	mKeys.down = 'j';
+	mKeys.quit = 'q';
 	mKeys.modifier_key = CTRL;
 	session->movement_keys = mKeys;
 
