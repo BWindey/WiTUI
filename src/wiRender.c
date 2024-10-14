@@ -2,7 +2,11 @@
 #include <stdio.h>
 #include <string.h>
 #include <sys/ioctl.h>
-#include "../include/wiTUI.h"
+#include <termios.h>
+#include <unistd.h>
+
+#include "../include/wiTUI.h" /* Implemenets wi_render_frame */
+#include "../../WiTesting/wiAssert.h"
 
 #include <time.h>
 #define time_it(function_call) { \
@@ -16,6 +20,31 @@ typedef struct terminal_size {
 	int rows;
 	int cols;
 } terminal_size;
+
+/* Get 1 key-press from the user */
+char get_char() {
+	char buf = 0;
+	struct termios old = {0};
+	/* Save old settings */
+	wiAssert(tcgetattr(0, &old) >= 0, "tcsetattr()");
+
+	/* Set to raw mode */
+	old.c_lflag &= ~ICANON;
+	old.c_lflag &= ~ECHO;
+	old.c_cc[VMIN] = 1;
+	old.c_cc[VTIME] = 0;
+	wiAssert(tcsetattr(0, TCSANOW, &old) >= 0, "tcsetattr ICANON");
+
+	long read_result = read(0, &buf, 1);
+	wiAssert(read_result >= 0, "Error reading key" );
+
+	/* Set back to normal mode */
+	old.c_lflag |= ICANON;
+	old.c_lflag |= ECHO;
+	wiAssert(tcsetattr(0, TCSADRAIN, &old) >= 0, "tcsetattr ~ICANON");
+
+	return (buf);
+}
 
 void cursor_move_vertical(int x) {
 	if (x > 0) {
@@ -199,3 +228,17 @@ int wi_render_frame(wi_session* session) {
 	return accumulated_height;
 }
 
+wi_result wi_show_session(wi_session * session) {
+	wi_result cursor_position = (wi_result) {
+		(wi_position) { 0, 0 },
+		(wi_position) { 0, 0 }
+	};
+
+	int printed_height = wi_render_frame(session);
+	while (get_char() != session->movement_keys.quit) {
+		cursor_move_vertical(printed_height);
+		printed_height = wi_render_frame(session);
+	}
+
+	return cursor_position;
+}
