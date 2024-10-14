@@ -1,20 +1,14 @@
-#include <stdbool.h>
-#include <stdio.h>
-#include <string.h>
-#include <sys/ioctl.h>
-#include <termios.h>
-#include <unistd.h>
+#include <stdbool.h>	/* true, false */
+#include <stdio.h>		/* printf() */
+#include <string.h>		/* strlen() */
+#include <sys/ioctl.h>	/* ioctl() */
+#include <termios.h>	/* tcgetattr(), tcsetattr() */
+#include <unistd.h>		/* read(), ICANON, ECHO, ... */
 
-#include "../include/wiTUI.h" /* Implemenets wi_render_frame */
-#include "../../WiTesting/wiAssert.h"
+#include "../../WiTesting/wiAssert.h" 	/* wiAssert() */
 
-#include <time.h>
-#define time_it(function_call) { \
-	clock_t begin = clock(); \
-	function_call; \
-	clock_t end = clock(); \
-	printf("Time spent calling function " #function_call ": %fms\n", (double)(1000 * (end - begin)) / CLOCKS_PER_SEC); \
-}
+/* This file implemenets wi_render_frame, wi_show_session */
+#include "../include/wiTUI.h"
 
 typedef struct terminal_size {
 	int rows;
@@ -35,7 +29,7 @@ char get_char() {
 	old.c_cc[VTIME] = 0;
 	wiAssert(tcsetattr(0, TCSANOW, &old) >= 0, "tcsetattr ICANON");
 
-	long read_result = read(0, &buf, 1);
+	long read_result = read(STDIN_FILENO, &buf, 1);
 	wiAssert(read_result >= 0, "Error reading key" );
 
 	/* Set back to normal mode */
