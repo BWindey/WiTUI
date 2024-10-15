@@ -32,6 +32,7 @@ wi_window* wi_make_window(void) {
 
 	window->wrapText = true;
 	window->store_cursor_position = true;
+	window->cursor_rendering = POINTBASED;
 
 	window->depending_windows = NULL;
 	window->_internal_amount_depending = 0;

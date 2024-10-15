@@ -1,6 +1,6 @@
 #pragma once
 
-#include <stdbool.h>
+#include <stdbool.h> /* true, false */
 
 typedef struct wi_position {
 	int row;
@@ -33,6 +33,10 @@ typedef struct wi_border {
 	char* unfocussed_colour;
 } wi_border;
 
+typedef enum cursor_rendering {
+	INVISIBLE, LINEBASED, POINTBASED
+} cursor_rendering;
+
 typedef struct wi_session wi_session;
 typedef struct wi_window wi_window;
 typedef struct wi_window {
@@ -47,6 +51,7 @@ typedef struct wi_window {
 	wi_border border;
 	bool wrapText;
 	bool store_cursor_position;
+	cursor_rendering cursor_rendering;
 	/* (HEAP) */
 	wi_window** depending_windows;
 
