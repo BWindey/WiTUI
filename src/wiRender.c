@@ -40,6 +40,10 @@ char get_char() {
 	return (buf);
 }
 
+void clear_screen() {
+	printf("\033[1;1H\033[2J");
+}
+
 void cursor_move_vertical(int x) {
 	if (x > 0) {
 		printf("\033[%dA", x);
@@ -137,7 +141,6 @@ void render_window_top_border(const wi_border border, char* title, int width, in
 		current_width++;
 	}
 	printf("%s\n", border.corner_top_right);
-
 }
 
 void render_window_bottom_border(const wi_border border, char* footer, int width, int horizontal_offset) {
@@ -222,11 +225,15 @@ int wi_render_frame(wi_session* session) {
 	return accumulated_height;
 }
 
-wi_result wi_show_session(wi_session * session) {
+wi_result wi_show_session(wi_session* session) {
 	wi_result cursor_position = (wi_result) {
 		(wi_position) { 0, 0 },
 		(wi_position) { 0, 0 }
 	};
+
+	if (session->full_screen) {
+		clear_screen();
+	}
 
 	int printed_height = wi_render_frame(session);
 	while (get_char() != session->movement_keys.quit) {
