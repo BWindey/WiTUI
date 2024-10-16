@@ -19,9 +19,9 @@ wi_window* wi_make_window(void) {
 	int rows = 1;
 	window->contents = (char***) malloc(rows * sizeof(char**));
 	window->contents[0] = NULL;
-	window->_internal_amount_rows = rows;
-	window->_internal_amount_cols = (int*) malloc(rows * sizeof(int));
-	window->_internal_amount_cols[0] = 0;
+	window->_internal_content_rows = rows;
+	window->_internal_content_cols = (int*) malloc(rows * sizeof(int));
+	window->_internal_content_cols[0] = 0;
 
 	/* Rounded corners, standard focus colour and dim unfocussed colour */
 	window->border = (wi_border) { 
@@ -97,6 +97,44 @@ wi_window* wi_add_content_to_window(
 	const char* content, 
 	const wi_position position
 ) {
+	/* Grow rows if necessary */
+	if (position.row >= window->_internal_content_rows) {
+		window->contents = (char***) realloc(
+			window->contents,
+	 		(position.row + 1) * sizeof(char**)
+		);
+		wiAssert(window->contents != NULL, "Failed to grow array when adding content to a window");
+
+		window->_internal_content_cols = (int*) realloc(
+			window->_internal_content_cols,
+	 		(position.row + 1) * sizeof(int)
+		);
+		wiAssert(window->_internal_content_cols != NULL, "Failed to grow array when adding content to a window");
+
+		/* Fill in the spaces between old and new */
+		for (int i = window->_internal_content_rows; i < position.row; i++) {
+			window->contents[i] = NULL;
+			window->_internal_content_cols[i] = 0;
+		}
+		window->_internal_content_rows = position.row + 1;
+	}
+
+	/* Grow cols if necessary */
+	if (position.col >= window->_internal_content_cols[position.row]) {
+		window->contents[position.row] = (char**) realloc(
+			window->contents[position.row],
+			(position.col + 1) * sizeof(char*)
+		);
+		wiAssert(window->contents[position.row] != NULL, "Failed to grow array when adding content to a window");
+
+		/* Fill in the spaces between old and new */
+		for (int i = window->_internal_content_cols[position.row]; i < position.col; i++) {
+			window->_internal_content_cols[i] = 0;
+		}
+	
+		window->_internal_content_cols[position.row] = position.col + 1;
+	}
+
 
 	return window;
 }
@@ -117,13 +155,13 @@ void wi_free_session_completely(wi_session* session) {
 void wi_free_window(wi_window* window) {
 	free(window->depending_windows);
 
-	for (int i = 0; i < window->_internal_amount_rows; i++) {
-		for (int j = 0; j < window->_internal_amount_cols[i]; j++) {
+	for (int i = 0; i < window->_internal_content_rows; i++) {
+		for (int j = 0; j < window->_internal_content_cols[i]; j++) {
 			free(window->contents[i][j]);
 		}
 		free(window->contents[i]);
 	}
 	free(window->contents);
-	free(window->_internal_amount_cols);
+	free(window->_internal_content_cols);
 	free(window);
 }

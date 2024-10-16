@@ -55,10 +55,12 @@ typedef struct wi_window {
 
 	/* Only change this outside library code if you like debugging. */
     int _internal_amount_depending;
+
 	/* Only change this outside library code if you like debugging. */
-	int _internal_amount_rows;
+	int _internal_content_rows;
 	/* Only change this outside library code if you like debugging (HEAP). */
-	int* _internal_amount_cols;
+	int* _internal_content_cols;
+
 	/* Only change this outside library code if you like debugging. */
 	int _internal_rendered_width;
 	/* Only change this outside library code if you like debugging. */
