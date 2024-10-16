@@ -42,9 +42,7 @@ typedef struct wi_window wi_window;
 typedef struct wi_window {
 	int width;
 	int height;
-	/* (HEAP) */
 	char* title;
-	/* (HEAP) */
 	char* footer;
 	/* (HEAP) */
 	char*** contents;
@@ -165,10 +163,8 @@ wi_session* wi_make_session(void);
 wi_session* wi_add_window_to_session(wi_session*, wi_window*, int row);
 /*
  * Add content-string to an existing window at the given position.
- * If position.row > window.amount_rows, then the content will be placed on a 
- * new row directly below the previous last row.
- * If position.column > window[position.row].amount_columns, then the content
- * will be placed as last item in that row.
+ * If position.row > window.amount_rows, then the NULL-contents will be placed 
+ * between empty rows (same for columns).
  *
  * To get empty contents, add empty strings as content.
  * To have the effect of falling back to previous content at some positions, add

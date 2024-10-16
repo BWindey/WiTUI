@@ -12,8 +12,8 @@ wi_window* wi_make_window(void) {
 	window->_internal_rendered_width = 10;
 	window->_internal_rendered_height = 10;
 	window->height = 10;
-	window->title = strdup("Test window");
-	window->footer = strdup("q: quit");
+	window->title = "Test window";
+	window->footer = "q: quit";
 
 	/* Starting with a 1 empty row*/
 	int rows = 1;
@@ -92,6 +92,15 @@ wi_session* wi_add_window_to_session(wi_session* session, wi_window* window, int
 	return session;
 }
 
+wi_window* wi_add_content_to_window(
+	wi_window* window,
+	const char* content, 
+	const wi_position position
+) {
+
+	return window;
+}
+
 void wi_free_session_completely(wi_session* session) {
 	/* Free all the windows... Yay */
 	for (int i = 0; i < session->_internal_amount_rows; i++) {
@@ -106,9 +115,6 @@ void wi_free_session_completely(wi_session* session) {
 }
 
 void wi_free_window(wi_window* window) {
-	free(window->title);
-	free(window->footer);
-
 	free(window->depending_windows);
 
 	for (int i = 0; i < window->_internal_amount_rows; i++) {
