@@ -31,16 +31,14 @@ int main(void)
 	wi_add_window_to_session(session, window12, 1);
 
 	window01->border.focussed_colour = "\033[94m";
-	free(window01->title);
-	window01->title = strdup(" This is a nice title ");
+	window01->title = " This is a nice title ";
 	window01->width = -1;
 
 	window02->border.focussed_colour = "\033[92m";
 	window02->width = -1;
 
 	window10->border.focussed_colour = "\033[91m";
-	free(window10->title);
-	window10->title = strdup(" The green window has the standard title ");
+	window10->title = " The green window has the standard title ";
 	window10->width = -1;
 
 	window11->border.focussed_colour = "\033[93m";
@@ -53,6 +51,7 @@ int main(void)
 	window12->border.focussed_colour = "\033[95m";
 	window12->width = -1;
 
+	session->full_screen = false;
 	wi_show_session(session);
 
 	wi_free_session_completely(session);
