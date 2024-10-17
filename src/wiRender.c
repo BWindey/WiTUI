@@ -267,7 +267,12 @@ wi_result wi_show_session(wi_session* session) {
 
 	int printed_height = wi_render_frame(session);
 	while (get_char() != session->movement_keys.quit) {
-		cursor_move_vertical(printed_height);
+		if (session->full_screen) {
+			clear_screen();
+		} else {
+			cursor_move_vertical(printed_height);
+		}
+
 		printed_height = wi_render_frame(session);
 	}
 
