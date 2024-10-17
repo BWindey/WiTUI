@@ -124,6 +124,36 @@ wi_session* calculate_window_widths(wi_session* session) {
 	return session;
 }
 
+struct rendered_content {
+	char** content_rows;
+	int current_capacity;
+	int maxCapacity;
+};
+
+/* 
+ * Calculate how a content will be rendered in the context of the given window,
+ * so accounting for:
+ * 	- with window._internal_rendered_width/height,
+ * 	- window.wrapText
+ * 	- window.cursor_rendering
+ * 	- window.cursor_position
+ *
+ * The content will (if needed) be wrapped or shifted according to the cursor
+ * position, and the cursor position will be highlighted if needed.
+ *
+ * The result will be inside the returned struct; which contains the info
+ * to free the content_rows, which will be completely on the heap.
+ * 
+ * @returns: struct with the content rows that can be displayed
+ */
+struct rendered_content calculate_contents(
+	wi_window* window, const char* content
+) {
+	struct rendered_content rendered_content;
+
+	return rendered_content;
+}
+
 void render_window_top_border(const wi_border border, char* title, int width, int horizontal_offset) {
 	cursor_move_horizontal(horizontal_offset);
 	printf("%s", border.focussed_colour);
