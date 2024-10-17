@@ -174,7 +174,7 @@ wi_session* wi_add_window_to_session(wi_session*, wi_window*, int row);
  *
  * @returns: updated window
  */
-wi_window* wi_add_content_to_window(wi_window*, const char* content, const wi_position);
+wi_window* wi_add_content_to_window(wi_window*, char* content, const wi_position);
 
 /* 
  * Set title of a window. 

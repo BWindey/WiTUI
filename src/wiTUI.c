@@ -94,7 +94,7 @@ wi_session* wi_add_window_to_session(wi_session* session, wi_window* window, int
 
 wi_window* wi_add_content_to_window(
 	wi_window* window,
-	const char* content, 
+	char* content, 
 	const wi_position position
 ) {
 	/* Grow rows if necessary */
@@ -135,6 +135,7 @@ wi_window* wi_add_content_to_window(
 		window->_internal_content_cols[position.row] = position.col + 1;
 	}
 
+	window->contents[position.row][position.col] = content;
 
 	return window;
 }
