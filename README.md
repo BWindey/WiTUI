@@ -10,10 +10,12 @@ or malformed strings, will result in the program aborting.
 I will however do my best to make the error-messages clear.
 
 ### Current short-term TODO's:
+- Detect keys and move focus accordingly
 - Implement window-content
 - Rethink movement in rendering, maybe I could use absolute movement by storing
     starting position as (0, 0); then use more go_to()'s.
     This could simplify making a border around the session itself... hmmm
+- Add rule for header/footer rendering: left, center or right-align
 - Rethink how wi_border should work, stack vs heap, what about reusability and freeing?
     This is especially important when wanting to give sessions a border too,
     and to do this while not repeating code, be memory-efficien, and watch out
@@ -63,8 +65,10 @@ They will be displayed inside the border, and cut off when too large.
 
 The border consists of an array of 8 characters: 4 corners and 4 sides.
 It also can have a color that is applied to the whole border,
-and that color can be defined for when the window is selected or not.
+and that color can be defined for when the window is focussed or not.
 By default this would be white and dim respectively.
+IMPORTANT: this border effect should not contain visible characters when 
+printed, to not mess up any width calculations.
 When the border is set to `NULL`, it won't be rendered.
 Note that if you want an empty border, but not that 2 windows do not have any
 separation, you will need to have a border consisting of spaces.

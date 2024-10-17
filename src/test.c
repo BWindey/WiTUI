@@ -1,8 +1,5 @@
 #include <stdbool.h>
-#include <stdio.h>
-#include <string.h>
 #include <sys/ioctl.h>
-#include <stdlib.h>
 #include "../include/wiTUI.h"
 
 #include <time.h>
