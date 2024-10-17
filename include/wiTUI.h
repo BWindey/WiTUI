@@ -65,6 +65,11 @@ typedef struct wi_window {
 	int _internal_rendered_width;
 	/* Only change this outside library code if you like debugging. */
 	int _internal_rendered_height;
+
+	/* Only change this outside library code if you like debugging. */
+	wi_position _internal_last_cursor_position;
+	/* Only change this outside library code if you like debugging. */
+	bool _internal_currently_focussed;
 } wi_window;
 
 typedef struct wi_session {

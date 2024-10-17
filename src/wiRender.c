@@ -154,9 +154,12 @@ struct rendered_content calculate_contents(
 	return rendered_content;
 }
 
-void render_window_top_border(const wi_border border, char* title, int width, int horizontal_offset) {
+void render_window_top_border(
+	const wi_border border, char* title, int width, 
+	int horizontal_offset, char* effect
+) {
 	cursor_move_horizontal(horizontal_offset);
-	printf("%s", border.focussed_colour);
+	printf("%s", effect);
 	printf("%s", border.corner_top_left);
 
 	/* Print title */
@@ -199,10 +202,16 @@ void render_window_bottom_border(const wi_border border, char* footer, int width
 
 void render_window(const wi_window* window, int horizontal_offset) {
 	wi_border border = window->border;
+	char* effect;
+	if (window->_internal_currently_focussed) {
+		effect = border.focussed_colour;
+	} else {
+		effect = border.unfocussed_colour;
+	}
 
 	render_window_top_border(
 		border, window->title,
-		window->_internal_rendered_width, horizontal_offset
+		window->_internal_rendered_width, horizontal_offset, effect
 	);
 
 	/* Contents (empty for now) */
@@ -212,7 +221,7 @@ void render_window(const wi_window* window, int horizontal_offset) {
 		for (int j = 0; j < window->_internal_rendered_width; j++) {
 			/* This will need to print content,
 			 * also applies colour to "closing" border */
-			printf("\033[0m%c%s", 'c', border.focussed_colour);
+			printf("\033[0m%c%s", 'c', effect);
 		}
 		printf("%s\n", border.side_right);
 	}
@@ -260,6 +269,19 @@ wi_result wi_show_session(wi_session* session) {
 		(wi_position) { 0, 0 },
 		(wi_position) { 0, 0 }
 	};
+
+	int focus_row = session->cursor_start.row;
+	int focus_col = session->cursor_start.col;
+	wiAssert(
+		session->cursor_start.row < session->_internal_amount_rows,
+		"Can not focus on non-existing window."
+	);
+	wiAssert(
+		session->cursor_start.col < session->_internal_amount_cols[focus_col],
+		"Can not focus on non-existing window."
+	);
+
+	session->windows[focus_row][focus_col]->_internal_currently_focussed = true;
 
 	if (session->full_screen) {
 		clear_screen();

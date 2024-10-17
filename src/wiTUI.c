@@ -37,6 +37,9 @@ wi_window* wi_make_window(void) {
 	window->depending_windows = NULL;
 	window->_internal_amount_depending = 0;
 
+	window->_internal_last_cursor_position = (wi_position) { 0, 0 };
+	window->_internal_currently_focussed = false;
+
 	return window;
 }
 
