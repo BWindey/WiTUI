@@ -37,7 +37,7 @@ char get_char() {
 	old.c_lflag |= ECHO;
 	wiAssert(tcsetattr(0, TCSADRAIN, &old) >= 0, "tcsetattr ~ICANON");
 
-	return (buf);
+	return buf;
 }
 
 void clear_screen() {
@@ -264,6 +264,47 @@ int wi_render_frame(wi_session* session) {
 	return accumulated_height;
 }
 
+void normalise_position(wi_session* session) {
+	int row = session->cursor_start.row;
+	int col = session->cursor_start.col;
+
+	if (row < 0) {
+		session->cursor_start.row = 0;
+		row = 0;
+	} else if (row >= session->_internal_amount_rows) {
+		session->cursor_start.row = session->_internal_amount_rows - 1;
+		row = session->_internal_amount_rows - 1;
+	}
+
+	if (col < 0) {
+		session->cursor_start.col = 0;
+	} else if (col >= session->_internal_amount_cols[row]) {
+		session->cursor_start.col = session->_internal_amount_cols[row] - 1;
+	}
+}
+
+void handle(char c, wi_session* session) {
+	session->windows[session->cursor_start.row][session->cursor_start.col]->_internal_currently_focussed = false;
+	/* Hardcoded values for CTRL-hjkl */
+	switch (c) {
+		case 8:
+			session->cursor_start.col--;
+			break;
+		case 10:
+			session->cursor_start.row++;
+			break;
+		case 11:
+			session->cursor_start.row--;
+			break;
+		case 12:
+			session->cursor_start.col++;
+			break;
+	}
+
+	normalise_position(session);
+	session->windows[session->cursor_start.row][session->cursor_start.col]->_internal_currently_focussed = true;
+}
+
 wi_result wi_show_session(wi_session* session) {
 	wi_result cursor_position = (wi_result) {
 		(wi_position) { 0, 0 },
@@ -288,7 +329,10 @@ wi_result wi_show_session(wi_session* session) {
 	}
 
 	int printed_height = wi_render_frame(session);
-	while (get_char() != session->movement_keys.quit) {
+	int c = get_char();
+	while (c != session->movement_keys.quit) {
+		handle(c, session);
+
 		if (session->full_screen) {
 			clear_screen();
 		} else {
@@ -296,6 +340,8 @@ wi_result wi_show_session(wi_session* session) {
 		}
 
 		printed_height = wi_render_frame(session);
+
+		c = get_char();
 	}
 
 	return cursor_position;
