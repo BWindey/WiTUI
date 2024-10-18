@@ -105,6 +105,10 @@ wi_session* calculate_window_widths(wi_session* session) {
 			}
 		}
 
+		if (amount_to_compute == 0) {
+			return session;
+		}
+
 		const int distributed_width = 
 			(available_width - occupied_width) / amount_to_compute;
 		const int left_over = 
