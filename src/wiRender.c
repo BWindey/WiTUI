@@ -144,29 +144,30 @@ wi_session* calculate_window_widths(wi_session* session) {
  * 
  * @returns: struct with the content rows that can be displayed
  */
-char** calculate_contents(
-	wi_window* window, char* content
-) {
+char** calculate_contents(const wi_window* window, char* content_pointer) {
 	int width = window->_internal_rendered_width;
 	int height = window->_internal_rendered_height;
 
-	char** rendered_content = malloc(height * sizeof(char*));
-	int row = 0;
+	char** rendered_content = (char**) malloc(height * sizeof(char*));
 
-	char* pointer = content;
-	char filler;
+	char filler = ' ';
 
-	for (int i = 0; i < height; i++) {
-		rendered_content[i] = malloc(width * sizeof(char));
-		filler = 0;
+	for (int current_height = 0; current_height < height; current_height++) {
+		rendered_content[current_height] = (char*) malloc(width * sizeof(char));
 
-		for (int j = 0; j < width; j++) {
-			rendered_content[i][j] = filler || *pointer;
-
-			if (*(pointer + 1) != '\n') {
-				pointer++;
+		for (int current_width = 0; current_width < width; current_width++) {
+			/* Fill up rest of line if it wasn't long enough */
+			if (*content_pointer == '\n' || *content_pointer == '\0') {
+				if (*content_pointer == '\n') {
+					content_pointer++;
+				}
+				while (current_width < width) {
+					rendered_content[current_height][current_width] = filler;
+					current_width++;
+				}
 			} else {
-				filler = ' ';
+				rendered_content[current_height][current_width] = *content_pointer;
+				content_pointer++;
 			}
 		}
 	}
@@ -234,17 +235,25 @@ void render_window(const wi_window* window, int horizontal_offset) {
 		window->_internal_rendered_width, horizontal_offset, effect
 	);
 
-	/* Contents (empty for now) */
+	/* Don't forget to free this one ;-) */
+	char** contents = calculate_contents(window, window->contents[0][0]);
+
+	/* Print rows of content with border surrounding it */
 	for (int i = 0; i < window->height; i++) {
-	cursor_move_horizontal(horizontal_offset);
+		cursor_move_horizontal(horizontal_offset);
 		printf("%s", border.side_left);
+
 		for (int j = 0; j < window->_internal_rendered_width; j++) {
 			/* This will need to print content,
 			 * also applies colour to "closing" border */
-			printf("\033[0m%c%s", 'c', effect);
+			printf("\033[0m%c%s", contents[i][j], effect);
 		}
+		free(contents[i]);
+
 		printf("%s\n", border.side_right);
 	}
+
+	free(contents);
 
 	render_window_bottom_border(
 		border, window->footer,
