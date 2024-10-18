@@ -44,7 +44,7 @@ typedef struct wi_window {
 	int height;
 	char* title;
 	char* footer;
-	/* (HEAP) */
+	/* (HEAP), but each individual content is on the stack */
 	char*** contents;
 	wi_border border;
 	bool wrapText;

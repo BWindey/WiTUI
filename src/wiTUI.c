@@ -160,9 +160,6 @@ void wi_free_window(wi_window* window) {
 	free(window->depending_windows);
 
 	for (int i = 0; i < window->_internal_content_rows; i++) {
-		for (int j = 0; j < window->_internal_content_cols[i]; j++) {
-			free(window->contents[i][j]);
-		}
 		free(window->contents[i]);
 	}
 	free(window->contents);
