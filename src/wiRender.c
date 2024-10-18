@@ -124,16 +124,10 @@ wi_session* calculate_window_widths(wi_session* session) {
 	return session;
 }
 
-struct rendered_content {
-	char** content_rows;
-	int current_capacity;
-	int maxCapacity;
-};
-
 /* 
  * Calculate how a content will be rendered in the context of the given window,
  * so accounting for:
- * 	- with window._internal_rendered_width/height,
+ * 	- window._internal_rendered_width/height,
  * 	- window.wrapText
  * 	- window.cursor_rendering
  * 	- window.cursor_position
@@ -146,10 +140,32 @@ struct rendered_content {
  * 
  * @returns: struct with the content rows that can be displayed
  */
-struct rendered_content calculate_contents(
-	wi_window* window, const char* content
+char** calculate_contents(
+	wi_window* window, char* content
 ) {
-	struct rendered_content rendered_content;
+	int width = window->_internal_rendered_width;
+	int height = window->_internal_rendered_height;
+
+	char** rendered_content = malloc(height * sizeof(char*));
+	int row = 0;
+
+	char* pointer = content;
+	char filler;
+
+	for (int i = 0; i < height; i++) {
+		rendered_content[i] = malloc(width * sizeof(char));
+		filler = 0;
+
+		for (int j = 0; j < width; j++) {
+			rendered_content[i][j] = filler || *pointer;
+
+			if (*(pointer + 1) != '\n') {
+				pointer++;
+			} else {
+				filler = ' ';
+			}
+		}
+	}
 
 	return rendered_content;
 }
