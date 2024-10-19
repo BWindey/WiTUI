@@ -44,6 +44,10 @@ void clear_screen() {
 	printf("\033[1;1H\033[2J");
 }
 
+/*
+ * Move the terminal cursor up or down.
+ * Positive x means down, negative x means up.
+ */
 void cursor_move_vertical(int x) {
 	if (x > 0) {
 		printf("\033[%dA", x);
@@ -53,6 +57,10 @@ void cursor_move_vertical(int x) {
 	}
 }
 
+/*
+ * Move the terminal cursor left or right.
+ * Positive y means right, negative y means left.
+ */
 void cursor_move_horizontal(int y) {
 	if (y > 0) {
 		printf("\033[%dC", y);
@@ -62,14 +70,30 @@ void cursor_move_horizontal(int y) {
 	}
 }
 
+/*
+ * Move the cursor to an absolute position in the terminal.
+ *
+ * NOTE: currently unused
+ */
 void cursor_go_to(int x, int y) {
 	printf("\033[%d;%dH", y, x);
 }
 
+/*
+ * Move the cursor to an absolute row in the terminal.
+ *
+ * NOTE: currently unused
+ */
 void cursor_go_to_row(int row) {
 	printf("\033[%dH", row);
 }
 
+/*
+ * Get the current terminal size as a struct containing .rows and .cols.
+ * The size is expressed in amount of characters.
+ *
+ * @returns: struct with current terminal size
+ */
 terminal_size get_terminal_size() {
 	struct winsize max;
 	ioctl(0, TIOCGWINSZ, &max);
@@ -209,6 +233,11 @@ char** calculate_contents(const wi_window* window, char* content_pointer) {
 	return rendered_content;
 }
 
+/*
+ * Print out the top-border of a window.
+ * Also print out the title in the left corner.
+ * The border gets printed out at the `horizontal_offset`, with the `effect`.
+ */
 void render_window_top_border(
 	const wi_border border, char* title, int width,
 	int horizontal_offset, char* effect
@@ -231,6 +260,11 @@ void render_window_top_border(
 	printf("%s\n", border.corner_top_right);
 }
 
+/*
+ * Print out the bottom-border of a window.
+ * Also print out the footer in the right corner.
+ * The border gets printed out at the `horizontal_offset`.
+ */
 void render_window_bottom_border(const wi_border border, char* footer, int width, int horizontal_offset) {
 	/* Calculate some numbers to be able to right-align the footer */
 	int footer_length = strlen(footer);
@@ -242,19 +276,23 @@ void render_window_bottom_border(const wi_border border, char* footer, int width
 	}
 	cursor_move_horizontal(horizontal_offset);
 
-	/* No need to apply colour effect, because that happens at ever line-end
+	/* No need to apply colour effect, because that happens at every line-end
 	 * of the window's content */
 	printf("%s", border.corner_bottom_left);
 	for (int _ = 0; _ < footer_padding_length; _++) {
 		printf("%s", border.side_bottom);
 	}
 
-	/* Restring footer-length if necessary (can't be longer then window-width) */
+	/* Restrain footer-length if necessary (can't be longer then window-width) */
 	printf("%.*s", footer_length, footer);
 
 	printf("%s\033[0m\n", border.corner_bottom_right);
 }
 
+/*
+ * Render a window at the given `horizontal_offset`.
+ * This assumes that the cursor already is at the right vertical space.
+ */
 void render_window(const wi_window* window, int horizontal_offset) {
 	wi_border border = window->border;
 	char* effect;
@@ -327,6 +365,10 @@ int wi_render_frame(wi_session* session) {
 	return accumulated_height;
 }
 
+/*
+ * Helping function for `handle()`,
+ * to make sure no invalid cursor-positions occur.
+ */
 void normalise_position(wi_session* session) {
 	int row = session->cursor_start.row;
 	int col = session->cursor_start.col;
@@ -346,6 +388,10 @@ void normalise_position(wi_session* session) {
 	}
 }
 
+/*
+ * Handle off the key-press.
+ * This can move the cursor-position between windows, and inside windows.
+ */
 void handle(char c, wi_session* session) {
 	session->windows[session->cursor_start.row][session->cursor_start.col]->_internal_currently_focussed = false;
 	/* Hardcoded values for CTRL-hjkl */
