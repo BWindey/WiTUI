@@ -15,38 +15,31 @@ int main(void)
 	wi_window* window01 = wi_make_window();
 	wi_window* window02 = wi_make_window();
 
-	wi_window* window10 = wi_make_window();
-	wi_window* window11 = wi_make_window();
-	wi_window* window12 = wi_make_window();
-
 	wi_session* session = wi_make_session();
 
 	wi_add_window_to_session(session, window01, 0);
 	wi_add_window_to_session(session, window02, 0);
-	wi_add_window_to_session(session, window10, 1);
-	wi_add_window_to_session(session, window11, 1);
-	wi_add_window_to_session(session, window12, 1);
 
 	window01->border.focussed_colour = "\033[94m";
+	window01->border.unfocussed_colour = "\033[34m\033[2m";
 	window01->title = " This is a nice title ";
-	window01->width = -1;
 
 	window02->border.focussed_colour = "\033[92m";
-	window02->width = -1;
+	window02->border.unfocussed_colour = "\033[32m\033[2m";
 
-	window10->border.focussed_colour = "\033[91m";
-	window10->title = " The green window has the standard title ";
-	window10->width = -1;
-
-	window11->border.focussed_colour = "\033[93m";
-	window11->width = -1;
-	window11->border.side_bottom = "-";
-	window11->border.side_top = "-";
-	window11->border.side_left = "|";
-	window11->border.side_right = "|";
-
-	window12->border.focussed_colour = "\033[95m";
-	window12->width = -1;
+	wi_add_content_to_window(
+		window01,
+		"This is a test.\nIt contains super-cali-fragilistic-expialedotios.",
+		(wi_position) { 0, 0 }
+	);
+	wi_add_content_to_window(
+		window02,
+		"This is a 2nd test!\n\nIt is longer then the previous, and is here to test wrapping. No wrap on word-boundaries yet though, that is to come.\n"
+		"\nIt should\nalso\nnot\ndisplay\nall\nthe content.",
+		(wi_position) { 0, 0 }
+	);
+	window01->width = 30;
+	window02->width = 40;
 
 	session->full_screen = false;
 	wi_show_session(session);
