@@ -409,6 +409,31 @@ int wi_render_frame(wi_session* session) {
 }
 
 /*
+ * Convert a character that's in potentially a weird range, to one
+ * in the range 'a-z', according to the modifier.
+ * If the character is not in its expected range for the given modifier,
+ * it is returned as-is.
+ */
+char normalised_key(char c, wi_modifier modifier) {
+	switch (modifier) {
+        case CTRL:
+			if (c > 0 && c <= 26) {
+				return c + 'a' - 1;
+			} else {
+				return c;
+			}
+        case SHIFT:
+			if (c >= 'A' && c <= 'Z') {
+				return c - 'A' + 'a';
+			} else {
+				return c;
+			}
+		default:
+			return c;
+	}
+}
+
+/*
  * Handle off the key-press.
  * This can move the cursor-position between windows, and inside windows.
  */
@@ -417,15 +442,21 @@ void handle(char c, wi_session* session) {
 	focussed_window->_internal_currently_focussed = false;
 
 	wi_movement_keys m_keys = session->movement_keys;
-	/* Hardcoded values for CTRL-hjkl */
-	if (c == 8 && session->cursor_start.col > 0) {
-		session->cursor_start.col--;
-	} else if (c == 10 && session->cursor_start.row + 1 < session->_internal_amount_rows) {
-		session->cursor_start.row++;
-	} else if (c == 11 && session->cursor_start.row > 0) {
-		session->cursor_start.row--;
-	} else if (c == 12 && session->cursor_start.col + 1 < session->_internal_amount_cols[session->cursor_start.row]) {
-		session->cursor_start.col++;
+
+	/* First check for ALT, because that's a 2-key combo */
+	if (m_keys.modifier_key == ALT && c == 27) {
+		c = get_char();
+		if (c == m_keys.left && session->cursor_start.col > 0) {
+			session->cursor_start.col--;
+		} else if (c == m_keys.right && session->cursor_start.col + 1 < session->_internal_amount_cols[session->cursor_start.row]) {
+			session->cursor_start.col++;
+		} else if (c == m_keys.up && session->cursor_start.row > 0) {
+			session->cursor_start.row--;
+		} else if (c == m_keys.down && session->cursor_start.row + 1 < session->_internal_amount_rows) {
+			session->cursor_start.row++;
+		}
+
+		/* Then check for normal keys without modifier */
 	} else if (c == m_keys.left && focussed_window->_internal_last_cursor_position.col > 0) {
 		focussed_window->_internal_last_cursor_position.col--;
 	} else if (c == m_keys.right && focussed_window->_internal_last_cursor_position.col + 1 < focussed_window->_internal_rendered_width) {
@@ -434,6 +465,20 @@ void handle(char c, wi_session* session) {
 		focussed_window->_internal_last_cursor_position.row--;
 	} else if (c == m_keys.down && focussed_window->_internal_last_cursor_position.row + 1 < focussed_window->_internal_rendered_height) {
 		focussed_window->_internal_last_cursor_position.row++;
+
+		/* And then check for keys + modifier that produce a single char */
+	} else {
+		c = normalised_key(c, m_keys.modifier_key);
+
+		if (c == m_keys.left && session->cursor_start.col > 0) {
+			session->cursor_start.col--;
+		} else if (c == m_keys.right && session->cursor_start.col + 1 < session->_internal_amount_cols[session->cursor_start.row]) {
+			session->cursor_start.col++;
+		} else if (c == m_keys.up && session->cursor_start.row > 0) {
+			session->cursor_start.row--;
+		} else if (c == m_keys.down && session->cursor_start.row + 1 < session->_internal_amount_rows) {
+			session->cursor_start.row++;
+		}
 	}
 
 	session->windows[session->cursor_start.row][session->cursor_start.col]->_internal_currently_focussed = true;
