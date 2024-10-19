@@ -409,29 +409,6 @@ int wi_render_frame(wi_session* session) {
 }
 
 /*
- * Helping function for `handle()`,
- * to make sure no invalid cursor-positions occur.
- */
-void normalise_position(wi_session* session) {
-	int row = session->cursor_start.row;
-	int col = session->cursor_start.col;
-
-	if (row < 0) {
-		session->cursor_start.row = 0;
-		row = 0;
-	} else if (row >= session->_internal_amount_rows) {
-		session->cursor_start.row = session->_internal_amount_rows - 1;
-		row = session->_internal_amount_rows - 1;
-	}
-
-	if (col < 0) {
-		session->cursor_start.col = 0;
-	} else if (col >= session->_internal_amount_cols[row]) {
-		session->cursor_start.col = session->_internal_amount_cols[row] - 1;
-	}
-}
-
-/*
  * Handle off the key-press.
  * This can move the cursor-position between windows, and inside windows.
  */
@@ -459,7 +436,6 @@ void handle(char c, wi_session* session) {
 		focussed_window->_internal_last_cursor_position.row++;
 	}
 
-	normalise_position(session);
 	session->windows[session->cursor_start.row][session->cursor_start.col]->_internal_currently_focussed = true;
 }
 
