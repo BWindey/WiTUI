@@ -8,7 +8,7 @@ typedef struct wi_position {
 } wi_position;
 
 typedef enum wi_modifier {
-	CTRL, ALT, SHIFT, SUPER
+	CTRL, ALT, SHIFT
 } wi_modifier;
 
 typedef struct wi_movement_keys {
