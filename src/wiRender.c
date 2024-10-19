@@ -76,7 +76,7 @@ terminal_size get_terminal_size() {
 	return (terminal_size) { max.ws_row, max.ws_col };
 }
 
-/* 
+/*
  * Per row, calculate the rendered width for each window.
  * This only changes when the normal width is set to -1.
  * When multiple windows have their width set to -1, the available space
@@ -114,12 +114,12 @@ wi_session* calculate_window_widths(wi_session* session) {
 		/* Calculate how wide each window can be */
 		const int width_to_distribute = available_width - occupied_width;
 		const int distributed_width = width_to_distribute / amount_to_compute;
-		const int left_over = 
+		const int left_over =
 			width_to_distribute - (distributed_width * amount_to_compute);
 
 		for (int col = 0; col < amount_to_compute; col++) {
 			/* -2 because border */
-			windows_to_compute[col]->_internal_rendered_width = 
+			windows_to_compute[col]->_internal_rendered_width =
 				distributed_width - 2;
 			/* Distribute left-over among the first windows, to fill screen */
 			if (col < left_over) {
@@ -131,7 +131,45 @@ wi_session* calculate_window_widths(wi_session* session) {
 	return session;
 }
 
-/* 
+/*
+ * Calculate the amount of characters to print on a line,
+ * while preventing to wrap inside a word.
+ *
+ * This will make sure that `content_pointer[wrap]`
+ * (`wrap` being the return value)
+ * is either a newline, nullbyte, space or '-'.
+ *
+ * When there is a single word on the line that is too long to fit, the word
+ * will be split at `width`.
+ *
+ * @returns: index on which to wrap the string
+ */
+int characters_until_wrap(char* content_pointer, int width) {
+	int wrap = 0;
+	char c;
+
+	for (int i = 0; i < width; i++) {
+		c = content_pointer[i];
+		if (c == '\0' || c == '\n') {
+			wrap = i;
+			return wrap;
+		} else if (c == ' ' || c == '-') {
+			if (i + 1 < width) {
+				wrap = i + 1;
+			} else {
+				wrap = i;
+			}
+		}
+	}
+
+	if (wrap == 0) {
+		return width;
+	}
+
+	return wrap;
+}
+
+/*
  * Calculate how a content will be rendered in the context of the given window,
  * so accounting for:
  * 	- window._internal_rendered_width/height,
@@ -142,10 +180,7 @@ wi_session* calculate_window_widths(wi_session* session) {
  * The content will (if needed) be wrapped or shifted according to the cursor
  * position, and the cursor position will be highlighted if needed.
  *
- * The result will be inside the returned struct; which contains the info
- * to free the content_rows, which will be completely on the heap.
- * 
- * @returns: struct with the content rows that can be displayed
+ * @returns: string-array with the contents of each line
  */
 char** calculate_contents(const wi_window* window, char* content_pointer) {
 	int width = window->_internal_rendered_width;
@@ -158,20 +193,16 @@ char** calculate_contents(const wi_window* window, char* content_pointer) {
 	for (int current_height = 0; current_height < height; current_height++) {
 		rendered_content[current_height] = (char*) malloc(width * sizeof(char));
 
-		for (int current_width = 0; current_width < width; current_width++) {
-			/* Fill up rest of line if it wasn't long enough */
-			if (*content_pointer == '\n' || *content_pointer == '\0') {
-				if (*content_pointer == '\n') {
-					content_pointer++;
-				}
-				while (current_width < width) {
-					rendered_content[current_height][current_width] = filler;
-					current_width++;
-				}
-			} else {
-				rendered_content[current_height][current_width] = *content_pointer;
-				content_pointer++;
-			}
+		int chars_until_wrap = characters_until_wrap(content_pointer, width);
+		for (int i = 0; i < chars_until_wrap; i++) {
+			rendered_content[current_height][i] = *content_pointer;
+			content_pointer++;
+		}
+		if (*content_pointer == '\n') {
+			content_pointer++;
+		}
+		for (int i = chars_until_wrap; i < width; i++) {
+			rendered_content[current_height][i] = filler;
 		}
 	}
 
@@ -179,7 +210,7 @@ char** calculate_contents(const wi_window* window, char* content_pointer) {
 }
 
 void render_window_top_border(
-	const wi_border border, char* title, int width, 
+	const wi_border border, char* title, int width,
 	int horizontal_offset, char* effect
 ) {
 	cursor_move_horizontal(horizontal_offset);
