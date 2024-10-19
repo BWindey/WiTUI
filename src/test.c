@@ -23,9 +23,12 @@ int main(void)
 	window01->border.focussed_colour = "\033[94m";
 	window01->border.unfocussed_colour = "\033[34m\033[2m";
 	window01->title = " This is a nice title ";
+	window01->footer_alignment = CENTER;
 
+	window02->title_alignment = CENTER;
 	window02->border.focussed_colour = "\033[92m";
 	window02->border.unfocussed_colour = "\033[32m\033[2m";
+	window02->footer_alignment = LEFT;
 
 	wi_add_content_to_window(
 		window01,

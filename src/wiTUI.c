@@ -14,6 +14,8 @@ wi_window* wi_make_window(void) {
 	window->height = 10;
 	window->title = "Test window";
 	window->footer = "q: quit";
+	window->title_alignment = LEFT;
+	window->footer_alignment = RIGHT;
 
 	/* Starting with a 1 empty row*/
 	int rows = 1;

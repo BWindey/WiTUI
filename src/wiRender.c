@@ -234,59 +234,57 @@ char** calculate_contents(const wi_window* window, char* content_pointer) {
 }
 
 /*
- * Print out the top-border of a window.
- * Also print out the title in the left corner.
- * The border gets printed out at the `horizontal_offset`, with the `effect`.
+ * Render a horizontal border with info (title/footer) in it.
+ * Does not set any effect.
+ * Does not jump horizontally.
+ * Does not close any effect.
+ * Does not place a newline.
+ * Just renders the given elements, and only does that.
+ *
+ * The only magick happening, is the alignment.
  */
-void render_window_top_border(
-	const wi_border border, char* title, int width,
-	int horizontal_offset, char* effect
+void render_window_border(
+	const char* left, const char* mid, const char* right,
+	const wi_info_alignment alignment, const char* info, const int width
 ) {
-	cursor_move_horizontal(horizontal_offset);
-	printf("%s", effect);
-	printf("%s", border.corner_top_left);
+	int info_length = strlen(info);
+	int left_pad;
+	int right_pad;
 
-	/* Print title */
-	int current_width = 0;
-	while (current_width < width && title[current_width]) {
-		printf("%c", title[current_width]);
-		current_width++;
-	}
-	/* Fill rest of top-border */
-	while (current_width < width) {
-		printf("%s", border.side_top);
-		current_width++;
-	}
-	printf("%s\n", border.corner_top_right);
-}
-
-/*
- * Print out the bottom-border of a window.
- * Also print out the footer in the right corner.
- * The border gets printed out at the `horizontal_offset`.
- */
-void render_window_bottom_border(const wi_border border, char* footer, int width, int horizontal_offset) {
-	/* Calculate some numbers to be able to right-align the footer */
-	int footer_length = strlen(footer);
-	int footer_padding_length = width - footer_length;
-
-	if (footer_padding_length < 0) {
-		footer_padding_length = 0;
-		footer_length = width;
-	}
-	cursor_move_horizontal(horizontal_offset);
-
-	/* No need to apply colour effect, because that happens at every line-end
-	 * of the window's content */
-	printf("%s", border.corner_bottom_left);
-	for (int _ = 0; _ < footer_padding_length; _++) {
-		printf("%s", border.side_bottom);
+	if (info_length > width) {
+		info_length = width;
 	}
 
-	/* Restrain footer-length if necessary (can't be longer then window-width) */
-	printf("%.*s", footer_length, footer);
+	switch (alignment) {
+		case LEFT:
+			left_pad = 0;
+			right_pad = width - info_length;
+			break;
 
-	printf("%s\033[0m\n", border.corner_bottom_right);
+		case CENTER:
+			right_pad = (width - info_length) / 2;
+			left_pad = width - info_length - right_pad;
+			break;
+
+		case RIGHT:
+			right_pad = 0;
+			left_pad = width - info_length;
+			break;
+	}
+
+	printf("%s", left);
+	for (int _ = 0; _ < left_pad; _++) {
+		printf("%s", mid);
+	}
+
+	/* Restrain info-length if necessary (can't be longer then window-width) */
+	printf("%.*s", info_length, info);
+
+	for (int _ = 0; _ < right_pad; _++) {
+		printf("%s", mid);
+	}
+
+	printf("%s", right);
 }
 
 /*
@@ -302,10 +300,13 @@ void render_window(const wi_window* window, int horizontal_offset) {
 		effect = border.unfocussed_colour;
 	}
 
-	render_window_top_border(
-		border, window->title,
-		window->_internal_rendered_width, horizontal_offset, effect
+	cursor_move_horizontal(horizontal_offset);
+	printf("%s", effect);
+	render_window_border(
+		border.corner_top_left, border.side_top, border.corner_top_right,
+		window->title_alignment, window->title, window->_internal_rendered_width
 	);
+	printf("\033[0m\n");
 
 	/* Don't forget to free this one ;-) */
 	char** contents = calculate_contents(window, window->contents[0][0]);
@@ -313,7 +314,7 @@ void render_window(const wi_window* window, int horizontal_offset) {
 	/* Print rows of content with border surrounding it */
 	for (int i = 0; i < window->height; i++) {
 		cursor_move_horizontal(horizontal_offset);
-		printf("%s", border.side_left);
+		printf("%s%s", effect, border.side_left);
 
 		for (int j = 0; j < window->_internal_rendered_width; j++) {
 			/* This will need to print content,
@@ -327,10 +328,13 @@ void render_window(const wi_window* window, int horizontal_offset) {
 
 	free(contents);
 
-	render_window_bottom_border(
-		border, window->footer,
-		window->_internal_rendered_width, horizontal_offset
+	cursor_move_horizontal(horizontal_offset);
+	printf("%s", effect);
+	render_window_border(
+		border.corner_bottom_left, border.side_bottom, border.corner_bottom_right,
+		window->footer_alignment, window->footer, window->_internal_rendered_width
 	);
+	printf("\033[0m\n");
 }
 
 int wi_render_frame(wi_session* session) {

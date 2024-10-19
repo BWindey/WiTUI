@@ -33,9 +33,13 @@ typedef struct wi_border {
 	char* unfocussed_colour;
 } wi_border;
 
-typedef enum cursor_rendering {
+typedef enum wi_cursor_rendering {
 	INVISIBLE, LINEBASED, POINTBASED
-} cursor_rendering;
+} wi_cursor_rendering;
+
+typedef enum wi_info_alignment {
+	LEFT, CENTER, RIGHT
+} wi_info_alignment;
 
 typedef struct wi_session wi_session;
 typedef struct wi_window wi_window;
@@ -44,12 +48,15 @@ typedef struct wi_window {
 	int height;
 	char* title;
 	char* footer;
+	wi_info_alignment title_alignment;
+	wi_info_alignment footer_alignment;
+
 	/* (HEAP), but each individual content is on the stack */
 	char*** contents;
 	wi_border border;
 	bool wrapText;
 	bool store_cursor_position;
-	cursor_rendering cursor_rendering;
+	wi_cursor_rendering cursor_rendering;
 	/* (HEAP) */
 	wi_window** depending_windows;
 
