@@ -20,6 +20,10 @@ typedef struct wi_movement_keys {
 	wi_modifier modifier_key;
 } wi_movement_keys;
 
+/*
+ * A struct to hold border-info.
+ * If the border should not be displayed, set the elements to 0/NULL.
+ */
 typedef struct wi_border {
 	char* corner_top_left;
 	char* corner_top_right;

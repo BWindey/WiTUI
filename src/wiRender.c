@@ -127,7 +127,11 @@ wi_session* calculate_window_widths(wi_session* session) {
 			} else {
 				/* +2 because border */
 				window->_internal_rendered_width = window->width;
-				occupied_width += session->windows[row][col]->width + 2;
+				occupied_width += session->windows[row][col]->width;
+
+				if (window->border.corner_bottom_left != NULL) {
+					occupied_width += 2;
+				}
 			}
 		}
 
@@ -143,8 +147,12 @@ wi_session* calculate_window_widths(wi_session* session) {
 
 		for (int col = 0; col < amount_to_compute; col++) {
 			/* -2 because border */
-			windows_to_compute[col]->_internal_rendered_width =
-				distributed_width - 2;
+			wi_window* window = windows_to_compute[col];
+			window->_internal_rendered_width = distributed_width;
+			if (window->border.corner_bottom_left != NULL) {
+				window->_internal_rendered_width -= 2;
+			}
+
 			/* Distribute left-over among the first windows, to fill screen */
 			if (col < left_over) {
 				windows_to_compute[col]->_internal_rendered_width++;
@@ -294,47 +302,58 @@ void render_window_border(
 void render_window(const wi_window* window, int horizontal_offset) {
 	wi_border border = window->border;
 	char* effect;
-	if (window->_internal_currently_focussed) {
-		effect = border.focussed_colour;
-	} else {
-		effect = border.unfocussed_colour;
-	}
 
-	cursor_move_horizontal(horizontal_offset);
-	printf("%s", effect);
-	render_window_border(
-		border.corner_top_left, border.side_top, border.corner_top_right,
-		window->title_alignment, window->title, window->_internal_rendered_width
-	);
-	printf("\033[0m\n");
+	if (border.corner_bottom_left != NULL) {
+		if (window->_internal_currently_focussed) {
+			effect = border.focussed_colour;
+		} else {
+			effect = border.unfocussed_colour;
+		}
+
+		cursor_move_horizontal(horizontal_offset);
+		printf("%s", effect);
+		render_window_border(
+			border.corner_top_left, border.side_top, border.corner_top_right,
+			window->title_alignment, window->title, window->_internal_rendered_width
+		);
+		printf("\033[0m\n");
+	}
 
 	/* Don't forget to free this one ;-) */
 	char** contents = calculate_contents(window, window->contents[0][0]);
 
 	/* Print rows of content with border surrounding it */
-	for (int i = 0; i < window->height; i++) {
+	for (int i = 0; i < window->_internal_rendered_height; i++) {
 		cursor_move_horizontal(horizontal_offset);
-		printf("%s%s", effect, border.side_left);
+
+		if (border.corner_bottom_left != NULL) {
+			printf("%s%s\033[0m", effect, border.side_left);
+		}
 
 		for (int j = 0; j < window->_internal_rendered_width; j++) {
 			/* This will need to print content,
 			 * also applies colour to "closing" border */
-			printf("\033[0m%c%s", contents[i][j], effect);
+			printf("%c", contents[i][j]);
 		}
 		free(contents[i]);
 
-		printf("%s\n", border.side_right);
+		if (border.corner_bottom_left != NULL) {
+			printf("%s%s\033[0m", effect, border.side_right);
+		}
+		printf("\n");
 	}
 
 	free(contents);
 
-	cursor_move_horizontal(horizontal_offset);
-	printf("%s", effect);
-	render_window_border(
-		border.corner_bottom_left, border.side_bottom, border.corner_bottom_right,
-		window->footer_alignment, window->footer, window->_internal_rendered_width
-	);
-	printf("\033[0m\n");
+	if (border.corner_bottom_left != NULL) {
+		cursor_move_horizontal(horizontal_offset);
+		printf("%s", effect);
+		render_window_border(
+			border.corner_bottom_left, border.side_bottom, border.corner_bottom_right,
+			window->footer_alignment, window->footer, window->_internal_rendered_width
+		);
+		printf("\033[0m\n");
+	}
 }
 
 int wi_render_frame(wi_session* session) {
@@ -354,7 +373,10 @@ int wi_render_frame(wi_session* session) {
 			window = session->windows[row][col];
 
 			render_window(window, accumulated_row_width);
-			cursor_move_vertical(window->height + 2);
+			cursor_move_vertical(window->height);
+			if (window->border.corner_bottom_left != NULL) {
+				cursor_move_vertical(2);
+			}
 
 			accumulated_row_width += window->_internal_rendered_width + 2;
 			if (window->height + 2 > max_row_height) {
