@@ -25,6 +25,8 @@ int main(void)
 	window01->title = " This is a nice title ";
 	window01->footer_alignment = CENTER;
 
+	window02->cursor_rendering = LINEBASED;
+
 	window02->title_alignment = CENTER;
 	window02->border.focussed_colour = "\033[92m";
 	window02->border.unfocussed_colour = "\033[32m\033[2m";
@@ -45,6 +47,8 @@ int main(void)
 	window02->width = 40;
 
 	session->full_screen = false;
+
+	/*wi_render_frame(session);*/
 	wi_show_session(session);
 
 	wi_free_session_completely(session);

@@ -330,17 +330,34 @@ void render_window(const wi_window* window, int horizontal_offset) {
 			printf("%s%s\033[0m", effect, border.side_left);
 		}
 
+		if (
+			window->_internal_currently_focussed
+			&& window->cursor_rendering == LINEBASED
+			&& window->_internal_last_cursor_position.row == i
+		) {
+			printf("\033[7m");
+		}
+
 		for (int j = 0; j < window->_internal_rendered_width; j++) {
 			/* This will need to print content,
 			 * also applies colour to "closing" border */
-			printf("%c", contents[i][j]);
+			if (
+				window->_internal_currently_focussed
+				&& window->_internal_last_cursor_position.row == i
+				&& window->_internal_last_cursor_position.col == j
+				&& window->cursor_rendering == POINTBASED
+			) {
+				printf("\033[7m%c\033[0m", contents[i][j]);
+			} else {
+				printf("%c", contents[i][j]);
+			}
 		}
 		free(contents[i]);
 
 		if (border.corner_bottom_left != NULL) {
-			printf("%s%s\033[0m", effect, border.side_right);
+			printf("\033[0m%s%s\033[0m", effect, border.side_right);
 		}
-		printf("\n");
+		printf("\033[0m\n");
 	}
 
 	free(contents);
@@ -419,21 +436,27 @@ void normalise_position(wi_session* session) {
  * This can move the cursor-position between windows, and inside windows.
  */
 void handle(char c, wi_session* session) {
-	session->windows[session->cursor_start.row][session->cursor_start.col]->_internal_currently_focussed = false;
+	wi_window* focussed_window = session->windows[session->cursor_start.row][session->cursor_start.col];
+	focussed_window->_internal_currently_focussed = false;
+
+	wi_movement_keys m_keys = session->movement_keys;
 	/* Hardcoded values for CTRL-hjkl */
-	switch (c) {
-		case 8:
-			session->cursor_start.col--;
-			break;
-		case 10:
-			session->cursor_start.row++;
-			break;
-		case 11:
-			session->cursor_start.row--;
-			break;
-		case 12:
-			session->cursor_start.col++;
-			break;
+	if (c == 8 && session->cursor_start.col > 0) {
+		session->cursor_start.col--;
+	} else if (c == 10 && session->cursor_start.row + 1 < session->_internal_amount_rows) {
+		session->cursor_start.row++;
+	} else if (c == 11 && session->cursor_start.row > 0) {
+		session->cursor_start.row--;
+	} else if (c == 12 && session->cursor_start.col + 1 < session->_internal_amount_cols[session->cursor_start.row]) {
+		session->cursor_start.col++;
+	} else if (c == m_keys.left && focussed_window->_internal_last_cursor_position.col > 0) {
+		focussed_window->_internal_last_cursor_position.col--;
+	} else if (c == m_keys.right && focussed_window->_internal_last_cursor_position.col + 1 < focussed_window->_internal_rendered_width) {
+		focussed_window->_internal_last_cursor_position.col++;
+	} else if (c == m_keys.up && focussed_window->_internal_last_cursor_position.row > 0) {
+		focussed_window->_internal_last_cursor_position.row--;
+	} else if (c == m_keys.down && focussed_window->_internal_last_cursor_position.row + 1 < focussed_window->_internal_rendered_height) {
+		focussed_window->_internal_last_cursor_position.row++;
 	}
 
 	normalise_position(session);
