@@ -127,7 +127,7 @@ wi_session* calculate_window_widths(wi_session* session) {
 			}
 		}
 	}
-	
+
 	return session;
 }
 

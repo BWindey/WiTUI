@@ -91,17 +91,17 @@ typedef struct wi_result {
 } wi_result;
 
 
-/* 
+/*
  * Free the session and all windows inside.
- * 
- * If you want to reuse some windows or even window-contents, 
+ *
+ * If you want to reuse some windows or even window-contents,
  * you can not use this function.
  *
  * @returns: void
  */
 void wi_free_session_completely(wi_session*);
 
-/* 
+/*
  * Free the window and all contents inside.
  *
  * Does NOT free depending windows, only the array of pointers to them.
@@ -113,21 +113,21 @@ void wi_free_session_completely(wi_session*);
  */
 void wi_free_window(wi_window*);
 
-/* 
+/*
  * Print out one frame.
  *
  * @returns: height of printed frame.
  */
 int wi_render_frame(wi_session*);
-/* 
- * Render a session to the screen, and take in user input. 
+/*
+ * Render a session to the screen, and take in user input.
  * Quits when the right key is pressed (see session.movement_keys).
  *
  * @returns: last cursor position (which window + which coordinate).
  */
 wi_result wi_show_session(wi_session*);
 
-/* 
+/*
  * Create a window on the heap like the other functions expect.
  * Sets the following defaults:
  * 		- width = 10
@@ -139,13 +139,13 @@ wi_result wi_show_session(wi_session*);
  * 		- wrap_text = true
  * 		- store_cursor_position = true
  * 		- depending_windows = NULL
- * 
+ *
  * See the library README.md for more details.
- * 
+ *
  * @returns: created window
  */
 wi_window* wi_make_window(void);
-/* 
+/*
  * Create a session on the heap like the other functions expect.
  * Sets the following default:
  *		- windows - empty
@@ -159,7 +159,7 @@ wi_window* wi_make_window(void);
  */
 wi_session* wi_make_session(void);
 
-/* 
+/*
  * Add window to an existing session at given row.
  * This function handles all the memory-management for you.
  * When the row is bigger then the current amount of rows +1,
@@ -170,7 +170,7 @@ wi_session* wi_make_session(void);
 wi_session* wi_add_window_to_session(wi_session*, wi_window*, int row);
 /*
  * Add content-string to an existing window at the given position.
- * If position.row > window.amount_rows, then the NULL-contents will be placed 
+ * If position.row > window.amount_rows, then the NULL-contents will be placed
  * between empty rows (same for columns).
  *
  * To get empty contents, add empty strings as content.
@@ -181,9 +181,9 @@ wi_session* wi_add_window_to_session(wi_session*, wi_window*, int row);
  */
 wi_window* wi_add_content_to_window(wi_window*, char* content, const wi_position);
 
-/* 
- * Set title of a window. 
- * This function assumes the previous title was set by malloc, and frees it. 
+/*
+ * Set title of a window.
+ * This function assumes the previous title was set by malloc, and frees it.
  *
  * @returns: updated window
  */

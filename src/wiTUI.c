@@ -24,8 +24,8 @@ wi_window* wi_make_window(void) {
 	window->_internal_content_cols[0] = 0;
 
 	/* Rounded corners, standard focus colour and dim unfocussed colour */
-	window->border = (wi_border) { 
-		"\u256D", "\u256E", "\u256F", "\u2570", 
+	window->border = (wi_border) {
+		"\u256D", "\u256E", "\u256F", "\u2570",
 		"\u2502", "\u2502", "\u2500", "\u2500",
 		"", "\033[2m"
 	};
@@ -97,7 +97,7 @@ wi_session* wi_add_window_to_session(wi_session* session, wi_window* window, int
 
 wi_window* wi_add_content_to_window(
 	wi_window* window,
-	char* content, 
+	char* content,
 	const wi_position position
 ) {
 	/* Grow rows if necessary */
@@ -134,7 +134,7 @@ wi_window* wi_add_content_to_window(
 		for (int i = window->_internal_content_cols[position.row]; i < position.col; i++) {
 			window->_internal_content_cols[i] = 0;
 		}
-	
+
 		window->_internal_content_cols[position.row] = position.col + 1;
 	}
 
