@@ -93,6 +93,8 @@ wi_session* calculate_window_widths(wi_session* session) {
 		int amount_to_compute = 0;
 		int occupied_width = 0;
 
+		/* Find windows with width -1,
+		 * the others already can have their rendered width */
 		for (int col = 0; col < session->_internal_amount_cols[row]; col++) {
 			window = session->windows[row][col];
 			if (window->width == -1) {
@@ -109,10 +111,11 @@ wi_session* calculate_window_widths(wi_session* session) {
 			return session;
 		}
 
-		const int distributed_width = 
-			(available_width - occupied_width) / amount_to_compute;
+		/* Calculate how wide each window can be */
+		const int width_to_distribute = available_width - occupied_width;
+		const int distributed_width = width_to_distribute / amount_to_compute;
 		const int left_over = 
-			available_width - (distributed_width * amount_to_compute);
+			width_to_distribute - (distributed_width * amount_to_compute);
 
 		for (int col = 0; col < amount_to_compute; col++) {
 			/* -2 because border */
