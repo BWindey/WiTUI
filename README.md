@@ -10,17 +10,12 @@ or malformed strings, will result in the program aborting.
 I will however do my best to make the error-messages clear.
 
 ### Current short-term TODO's:
-- Detect keys and move focus accordingly
-- Implement window-content
+- Improve content:
+    - shouldn't have to wrap
+    - scrolling
 - Rethink movement in rendering, maybe I could use absolute movement by storing
     starting position as (0, 0); then use more go_to()'s.
     This could simplify making a border around the session itself... hmmm
-- Add rule for header/footer rendering: left, center or right-align
-- Rethink how wi_border should work, stack vs heap, what about reusability and freeing?
-    This is especially important when wanting to give sessions a border too,
-    and to do this while not repeating code, be memory-efficien, and watch out
-    for freeing stuff when it still wants to be re-used, or potential desastrous
-    double frees...
 - Implement session-border
 
 
@@ -170,6 +165,8 @@ This key can be modified by the programmer.
 This is a list of things that don't have to be completed before calling this
 working, but are things I would like to implement:
 
+- Allow user input
+
 
 
 ## Aditional notes
@@ -182,5 +179,96 @@ performance is troubling.
 This scrollbar can be part of the border, and also be configured like the other
 border-elements.
 
-- Currently, resizing isn't handled. To effectively resize when the terminal
-size changes, the wrapping should be recalculated.
+
+## Documentation
+WiTUI works with 2 main objects (structs):
+- wi_window
+- wi_session
+
+A `wi_session` is the container holding `wi_windows`.
+
+#### `wi_session`
+A session is a struct that consists of the following values:
+- `windows` (`wi_window***`):
+    This is the 2D array on the heap with pointers to the windows attached
+    to the session. I would strongly discourage modifying this directly.
+    Use the function `wi_add_window_to_session(..)` instead to handle everything.
+- `fullscreen` (`bool`):
+    This setting indicates whether a `clear` should be called before each
+    rendered frame. If this is set to `false`, the session will be rendered
+    just below the shell-prompt.
+- `cursor_start` (`struct wi_posisition`):
+    This setting indicates which window should be the first to be in focus.
+    The struct holds 2 integers: `.row` and `.col`.
+- `movement_keys` (`struct wi_movement_keys`):
+    This setting dictates which keys are used to move between windows,
+    and inside windows.
+    The struct holds 5 chars: `.left`, `.right`, `.up`, `.down` and `.quit`,
+    and it holds the modifier-key that needs to be pressed with the normal
+    key to jump between windows.
+    The `.modifier_key` is an enum with following options: `CTRL`, `ALT`, `SHIFT`.
+
+A session also has 2 `_internal...` fields. Do not modify them unless you
+modify `.windows` directly. See the source code in `wiTUI.c` for info how.
+
+A session also has the following functions made for them:
+- `void wi_free_session_completely(wi_session*)`:
+    This function calls `wi_free_window()` (see its documentation later)
+    on all the `wi_window`s inside it,
+    calls `free()` on all the rows of the 2D array and the array itself,
+    and calls `free()` on the extra internal array for keeping track of size.
+
+- `int wi_render_frame(wi_session*)`:
+    This will a single frame of the session, and return the height of the
+    printed out frame.
+    This can be useful while developing, or maybe you just don't want that
+    interactive stuff.
+    This function is called by `wi_show_session(...)` every time the user
+    presses a key.
+
+- `wi_result wi_show_session(wi_session*)`:
+    This is the function that the library was designed for.
+    Show that session!
+    This will wait for the user to quit by pressing `session.movement_keys.quit`.
+    Then it will return the result: a `wi_result` struct.
+    This struct consists of 2 `wi_positsion`, the first one showing which window
+    was last selected, and the second one showing the position of the cursor
+    in that window. This behaviour can change depending on the window settings
+    (see that documentation later).
+
+- `wi_session* wi_make_session(void)`:
+    This is the recommended way to create a session. It sets defaults, and
+    initialises all the values in the way the other functions expect.
+    The defaults are:
+        - `.windows` - empty
+        - `.full_screen` = `false`
+        - `.cursor_start` = `{ 0, 0 }`
+        - `.movement_keys` = `{ 'h', 'j', 'k', 'l', CTRL }`
+    It returns the created session.
+
+- `wi_session* wi_add_window_to_session(wi_session*, wi_window*, int row)`:
+    This function adds a `wi_window*` to the session, on the given row.
+    It handles all the memory-management and updates internal sizes.
+    When the row is bigger then the current amount of rows, a new row is
+    created at the end, and the window is placed there.
+    So when there are 2 rows, and you want to add it on row 4,
+    it will actually be at the new 3rd row, not the 4th.
+    It will also attach windows at the end of the given row, so the order
+    of adding windows is important.
+
+
+#### `wi_window`
+A window is a struct that consists of the following values:
+- `width` (int):
+    The width a window should have, excluding a potential border.
+    The width can be set to `-1`. This means it will take in all the available
+    screenspace. When multiple windows on the same row have their width set to
+    `-1`, the available space will be distributed equally between them.
+    If the space is not equally divisible, the remainder `r` will be distributed
+    among the first `r` windows with width `-1`. Yep, that math checks out =)
+- `height` (int):
+    The height a window should have, excluding a potential border.
+- `title` (char*):
+    The title of a window. It gets rendered in the top-border, so when
+    the window has no border (see later), the title will not be rendered.
+    Set to `NULL` if you don't want a title.
