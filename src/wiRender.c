@@ -117,6 +117,7 @@ wi_session* calculate_window_widths(wi_session* session) {
 		int amount_to_compute = 0;
 		int occupied_width = 0;
 
+
 		/* Find windows with width -1,
 		 * the others already can have their rendered width */
 		for (int col = 0; col < session->_internal_amount_cols[row]; col++) {
@@ -136,7 +137,7 @@ wi_session* calculate_window_widths(wi_session* session) {
 		}
 
 		if (amount_to_compute == 0) {
-			return session;
+			continue;
 		}
 
 		/* Calculate how wide each window can be */
@@ -390,14 +391,15 @@ int wi_render_frame(wi_session* session) {
 			window = session->windows[row][col];
 
 			render_window(window, accumulated_row_width);
-			cursor_move_vertical(window->height);
+
+			cursor_move_vertical(window->_internal_rendered_height);
 			if (window->border.corner_bottom_left != NULL) {
 				cursor_move_vertical(2);
 			}
 
 			accumulated_row_width += window->_internal_rendered_width + 2;
-			if (window->height + 2 > max_row_height) {
-				max_row_height = window->height + 2;
+			if (window->_internal_rendered_height + 2 > max_row_height) {
+				max_row_height = window->_internal_rendered_height + 2;
 			}
 		}
 		cursor_move_vertical(-max_row_height);
