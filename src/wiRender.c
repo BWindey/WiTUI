@@ -496,21 +496,20 @@ int wi_render_frame(wi_session* session) {
  */
 char normalised_key(char c, wi_modifier modifier) {
 	switch (modifier) {
-        case CTRL:
+		case CTRL:
 			if (c > 0 && c <= 26) {
 				return c + 'a' - 1;
-			} else {
-				return c;
 			}
-        case SHIFT:
+			break;
+		case SHIFT:
 			if (c >= 'A' && c <= 'Z') {
 				return c - 'A' + 'a';
-			} else {
-				return c;
 			}
+			break;
 		default:
-			return c;
+			break;
 	}
+	return 0;
 }
 
 /*
