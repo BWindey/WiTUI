@@ -10,6 +10,8 @@
 /* This file implemenets wi_render_frame, wi_show_session */
 #include "../include/wiTUI.h"
 
+#include <time.h>
+
 typedef struct terminal_size {
 	int rows;
 	int cols;
@@ -108,7 +110,7 @@ terminal_size get_terminal_size() {
  *
  * @returns: updated session
  */
-wi_session* calculate_window_widths(wi_session* session) {
+wi_session* calculate_window_dimension(wi_session* session) {
 	const int available_width = get_terminal_size().cols;
 	wi_window* window;
 
@@ -457,7 +459,7 @@ int wi_render_frame(wi_session* session) {
 
 	wi_window* window;
 
-	calculate_window_widths(session);
+	calculate_window_dimension(session);
 
 	for (int row = 0; row < session->_internal_amount_rows; row++) {
 		accumulated_row_width = 0;
@@ -590,7 +592,26 @@ wi_result wi_show_session(wi_session* session) {
 		clear_screen();
 	}
 
+	/* TEMP */
+	double time_rendering = 0.0;
+	int amount_rendered = 0;
+	double current_time;
+	double min_time = 1000000;
+	double max_time = 0;
+
+
+	clock_t begin = clock();
 	int printed_height = wi_render_frame(session);
+	current_time = (double) (clock() - begin) * 1000.0 / CLOCKS_PER_SEC;
+	time_rendering += current_time;
+	if (current_time < min_time) {
+		min_time = current_time;
+	}
+	if (current_time > max_time) {
+		max_time = current_time;
+	}
+	amount_rendered++;
+
 	int c = get_char();
 	while (c != session->movement_keys.quit) {
 		handle(c, session);
@@ -601,10 +622,26 @@ wi_result wi_show_session(wi_session* session) {
 			cursor_move_vertical(printed_height);
 		}
 
+		begin = clock();
 		printed_height = wi_render_frame(session);
+		current_time = (double) (clock() - begin) * 1000.0 / CLOCKS_PER_SEC;
+		time_rendering += current_time;
+		if (current_time < min_time) {
+			min_time = current_time;
+		}
+		if (current_time > max_time) {
+			max_time = current_time;
+		}
+		amount_rendered++;
 
 		c = get_char();
 	}
+
+	printf("Time spent rendering: 		%f ms\n", time_rendering);
+	printf("Amount of rendering calls: 	%d\n", amount_rendered);
+	printf("Average rendering-time: 	%f ms\n", time_rendering / amount_rendered);
+	printf("Max rendering time: 		%f ms\n", max_time);
+	printf("Min rendering time: 		%f ms\n", min_time);
 
 	return cursor_position;
 }
