@@ -256,7 +256,7 @@ void render_window_border(
 	const char* left, const char* mid, const char* right,
 	const wi_info_alignment alignment, const char* info, const int width
 ) {
-	int info_length = strlen(info);
+	int info_length = info == NULL ? 0 : strlen(info);
 	int left_pad;
 	int right_pad;
 
