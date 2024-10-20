@@ -483,6 +483,11 @@ void handle(char c, wi_session* session) {
 		}
 	}
 
+	/* Sanitize the col-number, because it can be too large now */
+	if (session->cursor_start.col + 1 >= session->_internal_amount_cols[session->cursor_start.row]) {
+		session->cursor_start.col = session->_internal_amount_cols[session->cursor_start.row] - 1;
+	}
+
 	session->windows[session->cursor_start.row][session->cursor_start.col]->_internal_currently_focussed = true;
 }
 
