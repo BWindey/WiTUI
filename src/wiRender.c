@@ -333,8 +333,8 @@ void render_window_border(
 	const wi_info_alignment alignment, const char* info, const int width
 ) {
 	int info_length = info == NULL ? 0 : strlen(info);
-	int left_pad;
-	int right_pad;
+	int left_pad = 0;
+	int right_pad = 0;
 
 	if (info_length > width) {
 		info_length = width;
@@ -342,7 +342,6 @@ void render_window_border(
 
 	switch (alignment) {
 		case LEFT:
-			left_pad = 0;
 			right_pad = width - info_length;
 			break;
 
@@ -352,7 +351,6 @@ void render_window_border(
 			break;
 
 		case RIGHT:
-			right_pad = 0;
 			left_pad = width - info_length;
 			break;
 	}
@@ -378,7 +376,7 @@ void render_window_border(
  */
 void render_window(const wi_window* window, int horizontal_offset) {
 	wi_border border = window->border;
-	char* effect;
+	char* effect = "";
 
 	if (border.corner_bottom_left != NULL) {
 		if (window->_internal_currently_focussed) {
@@ -408,29 +406,6 @@ void render_window(const wi_window* window, int horizontal_offset) {
 		}
 
 		printf("%s", contents[i]);
-
-		/*if (*/
-		/*	window->_internal_currently_focussed*/
-		/*	&& window->cursor_rendering == LINEBASED*/
-		/*	&& window->_internal_last_cursor_position.row == i*/
-		/*) {*/
-		/*	printf("\033[7m");*/
-		/*}*/
-
-		/*for (int j = 0; j < window->_internal_rendered_width; j++) {*/
-		/*	This will need to print content,*/
-		/*	 also applies colour to "closing" border */
-		/*	if (*/
-		/*		window->_internal_currently_focussed*/
-		/*		&& window->_internal_last_cursor_position.row == i*/
-		/*		&& window->_internal_last_cursor_position.col == j*/
-		/*		&& window->cursor_rendering == POINTBASED*/
-		/*	) {*/
-		/*		printf("\033[7m%c\033[0m", contents[i][j]);*/
-		/*	} else {*/
-		/*		printf("%c", contents[i][j]);*/
-		/*	}*/
-		/*}*/
 		free(contents[i]);
 
 		if (border.corner_bottom_left != NULL) {
