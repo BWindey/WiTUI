@@ -215,7 +215,7 @@ int characters_until_wrap(char* content_pointer, int width) {
  *
  * @returns: string-array with the contents of each line
  */
-char** calculate_contents(const wi_window* window, char* content_pointer) {
+char** calculate_contents(const wi_window* window, char* content_pointer, wi_cursor_rendering cursor_rendering) {
 	int width = window->_internal_rendered_width;
 	int height = window->_internal_rendered_height;
 
@@ -223,20 +223,94 @@ char** calculate_contents(const wi_window* window, char* content_pointer) {
 
 	char filler = ' ';
 
+	size_t amount_to_alloc;
+	char* cursor_on = "\033[7m";
+	char* cursor_off = "\033[0m";
+	int offset;
+
 	for (int current_height = 0; current_height < height; current_height++) {
-		rendered_content[current_height] = (char*) malloc(width * sizeof(char));
+		offset = 0;
+
+		amount_to_alloc = width * sizeof(char) + 1; /* +1 for '\0' */
+		if (
+			window->_internal_currently_focussed
+			&& cursor_rendering != INVISIBLE
+			&& current_height == window->_internal_last_cursor_position.row
+		) {
+			amount_to_alloc += strlen(cursor_on) + strlen(cursor_off);
+		}
+		rendered_content[current_height] = (char*) malloc(amount_to_alloc);
+
+		if (
+			window->_internal_currently_focussed
+			&& cursor_rendering == LINEBASED
+			&& current_height == window->_internal_last_cursor_position.row
+		) {
+			strcpy(rendered_content[current_height], cursor_on);
+			offset = strlen(cursor_on);
+		}
 
 		int chars_until_wrap = characters_until_wrap(content_pointer, width);
+
 		for (int i = 0; i < chars_until_wrap; i++) {
-			rendered_content[current_height][i] = *content_pointer;
+			if (window->_internal_currently_focussed) {
+				if (
+					cursor_rendering == POINTBASED
+					&& current_height == window->_internal_last_cursor_position.row
+					&& i == window->_internal_last_cursor_position.col
+				) {
+					strcpy(rendered_content[current_height] + offset + i, cursor_on);
+					offset += strlen(cursor_on);
+				}
+				if (
+					cursor_rendering == POINTBASED
+					&& current_height == window->_internal_last_cursor_position.row
+					&& i - 1 == window->_internal_last_cursor_position.col
+				) {
+					strcpy(rendered_content[current_height] + offset + i, cursor_off);
+					offset += strlen(cursor_off);
+				}
+			}
+
+			rendered_content[current_height][offset + i] = *content_pointer;
 			content_pointer++;
 		}
 		if (*content_pointer == '\n') {
 			content_pointer++;
 		}
 		for (int i = chars_until_wrap; i < width; i++) {
-			rendered_content[current_height][i] = filler;
+			if (window->_internal_currently_focussed) {
+				if (
+					cursor_rendering == POINTBASED
+					&& current_height == window->_internal_last_cursor_position.row
+					&& i == window->_internal_last_cursor_position.col
+				) {
+					strcpy(rendered_content[current_height] + offset + i, cursor_on);
+					offset += strlen(cursor_on);
+				}
+				if (
+					cursor_rendering == POINTBASED
+					&& current_height == window->_internal_last_cursor_position.row
+					&& i - 1 == window->_internal_last_cursor_position.col
+				) {
+					strcpy(rendered_content[current_height] + offset + i, cursor_off);
+					offset += strlen(cursor_off);
+				}
+			}
+
+			rendered_content[current_height][offset + i] = filler;
 		}
+
+		if (
+			window->_internal_currently_focussed
+			&& cursor_rendering == LINEBASED
+			&& current_height == window->_internal_last_cursor_position.row
+		) {
+			strcpy(rendered_content[current_height] + offset + width, cursor_off);
+			offset += strlen(cursor_off);
+		}
+
+		rendered_content[current_height][offset + width] = '\0';
 	}
 
 	return rendered_content;
@@ -321,7 +395,7 @@ void render_window(const wi_window* window, int horizontal_offset) {
 	}
 
 	/* Don't forget to free this one ;-) */
-	char** contents = calculate_contents(window, window->contents[0][0]);
+	char** contents = calculate_contents(window, window->contents[0][0], window->cursor_rendering);
 
 	/* Print rows of content with border surrounding it */
 	for (int i = 0; i < window->_internal_rendered_height; i++) {
@@ -331,28 +405,30 @@ void render_window(const wi_window* window, int horizontal_offset) {
 			printf("%s%s\033[0m", effect, border.side_left);
 		}
 
-		if (
-			window->_internal_currently_focussed
-			&& window->cursor_rendering == LINEBASED
-			&& window->_internal_last_cursor_position.row == i
-		) {
-			printf("\033[7m");
-		}
+		printf("%s", contents[i]);
 
-		for (int j = 0; j < window->_internal_rendered_width; j++) {
-			/* This will need to print content,
-			 * also applies colour to "closing" border */
-			if (
-				window->_internal_currently_focussed
-				&& window->_internal_last_cursor_position.row == i
-				&& window->_internal_last_cursor_position.col == j
-				&& window->cursor_rendering == POINTBASED
-			) {
-				printf("\033[7m%c\033[0m", contents[i][j]);
-			} else {
-				printf("%c", contents[i][j]);
-			}
-		}
+		/*if (*/
+		/*	window->_internal_currently_focussed*/
+		/*	&& window->cursor_rendering == LINEBASED*/
+		/*	&& window->_internal_last_cursor_position.row == i*/
+		/*) {*/
+		/*	printf("\033[7m");*/
+		/*}*/
+
+		/*for (int j = 0; j < window->_internal_rendered_width; j++) {*/
+		/*	This will need to print content,*/
+		/*	 also applies colour to "closing" border */
+		/*	if (*/
+		/*		window->_internal_currently_focussed*/
+		/*		&& window->_internal_last_cursor_position.row == i*/
+		/*		&& window->_internal_last_cursor_position.col == j*/
+		/*		&& window->cursor_rendering == POINTBASED*/
+		/*	) {*/
+		/*		printf("\033[7m%c\033[0m", contents[i][j]);*/
+		/*	} else {*/
+		/*		printf("%c", contents[i][j]);*/
+		/*	}*/
+		/*}*/
 		free(contents[i]);
 
 		if (border.corner_bottom_left != NULL) {
