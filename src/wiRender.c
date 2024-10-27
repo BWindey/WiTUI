@@ -1,4 +1,5 @@
 #include <stdbool.h>	/* true, false */
+#include <stddef.h>
 #include <stdio.h>		/* printf() */
 #include <string.h>		/* strlen() */
 #include <sys/ioctl.h>	/* ioctl() */
@@ -215,63 +216,71 @@ int characters_until_wrap(char* content_pointer, int width) {
  * The content will (if needed) be wrapped or shifted according to the cursor
  * position, and the cursor position will be highlighted if needed.
  *
+ * The returned char** is allocated on the heap, and needs to be manually freed.
+ * Each element (row) has to be freed, and the array itself too.
+ *
  * @returns: string-array with the contents of each line
  */
-char** calculate_contents(const wi_window* window, char* content_pointer, wi_cursor_rendering cursor_rendering) {
-	int width = window->_internal_rendered_width;
-	int height = window->_internal_rendered_height;
+char** calculate_contents(
+	const wi_window* window,
+	char* content_pointer,
+	wi_cursor_rendering cursor_rendering
+) {
+	const int width = window->_internal_rendered_width;
+	const int height = window->_internal_rendered_height;
 
-	char** rendered_content = (char**) malloc(height * sizeof(char*));
+	const char filler = ' ';
 
-	char filler = ' ';
+	const char cursor_on[] = "\033[7m";
+	const char cursor_off[] = "\033[0m";
+	const size_t cursor_on_length = strlen(cursor_on);
+	const size_t cursor_off_length = strlen(cursor_off);
+
+	const bool do_cursor_render = window->_internal_currently_focussed
+		&& cursor_rendering != INVISIBLE;
+	const bool do_line_render = window->_internal_currently_focussed
+		&& cursor_rendering == LINEBASED;
+	const bool do_point_render = window->_internal_currently_focussed
+		&& cursor_rendering == POINTBASED;
+
+	const int cursor_row = window->_internal_last_cursor_position.row;
+	const int cursor_col = window->_internal_last_cursor_position.col;
 
 	size_t amount_to_alloc;
-	char* cursor_on = "\033[7m";
-	char* cursor_off = "\033[0m";
 	int offset;
+
+	char** rendered_content = (char**) malloc(height * sizeof(char*));
 
 	for (int current_height = 0; current_height < height; current_height++) {
 		offset = 0;
 
 		amount_to_alloc = width * sizeof(char) + 1; /* +1 for '\0' */
-		if (
-			window->_internal_currently_focussed
-			&& cursor_rendering != INVISIBLE
-			&& current_height == window->_internal_last_cursor_position.row
-		) {
-			amount_to_alloc += strlen(cursor_on) + strlen(cursor_off);
+		if (do_cursor_render && current_height == cursor_row) {
+			amount_to_alloc += cursor_on_length + cursor_off_length;
 		}
 		rendered_content[current_height] = (char*) malloc(amount_to_alloc);
 
-		if (
-			window->_internal_currently_focussed
-			&& cursor_rendering == LINEBASED
-			&& current_height == window->_internal_last_cursor_position.row
-		) {
-			strcpy(rendered_content[current_height], cursor_on);
-			offset = strlen(cursor_on);
+		if (do_line_render && current_height == cursor_row) {
+			/* memcpy instead of strcpy because we know the length */
+			memcpy(rendered_content[current_height], cursor_on, cursor_on_length);
+			offset = cursor_on_length;
 		}
 
 		int chars_until_wrap = characters_until_wrap(content_pointer, width);
 
 		for (int i = 0; i < chars_until_wrap; i++) {
-			if (window->_internal_currently_focussed) {
-				if (
-					cursor_rendering == POINTBASED
-					&& current_height == window->_internal_last_cursor_position.row
-					&& i == window->_internal_last_cursor_position.col
-				) {
-					strcpy(rendered_content[current_height] + offset + i, cursor_on);
-					offset += strlen(cursor_on);
-				}
-				if (
-					cursor_rendering == POINTBASED
-					&& current_height == window->_internal_last_cursor_position.row
-					&& i - 1 == window->_internal_last_cursor_position.col
-				) {
-					strcpy(rendered_content[current_height] + offset + i, cursor_off);
-					offset += strlen(cursor_off);
-				}
+			/* Render cursor-point if needed */
+			bool do_cursor_render_now =
+				do_point_render && current_height == cursor_row
+				&& (i == cursor_col || i - 1 == cursor_col);
+
+			if (do_cursor_render_now) {
+				const char* effect = i == cursor_col ? cursor_on : cursor_off;
+				const size_t jump = i == cursor_col ? cursor_on_length : cursor_off_length;
+
+			/* memcpy instead of strcpy because we know the length */
+				memcpy(rendered_content[current_height] + offset + i, effect, jump);
+				offset += jump;
 			}
 
 			rendered_content[current_height][offset + i] = *content_pointer;
@@ -281,35 +290,25 @@ char** calculate_contents(const wi_window* window, char* content_pointer, wi_cur
 			content_pointer++;
 		}
 		for (int i = chars_until_wrap; i < width; i++) {
-			if (window->_internal_currently_focussed) {
-				if (
-					cursor_rendering == POINTBASED
-					&& current_height == window->_internal_last_cursor_position.row
-					&& i == window->_internal_last_cursor_position.col
-				) {
-					strcpy(rendered_content[current_height] + offset + i, cursor_on);
-					offset += strlen(cursor_on);
-				}
-				if (
-					cursor_rendering == POINTBASED
-					&& current_height == window->_internal_last_cursor_position.row
-					&& i - 1 == window->_internal_last_cursor_position.col
-				) {
-					strcpy(rendered_content[current_height] + offset + i, cursor_off);
-					offset += strlen(cursor_off);
-				}
+			/* Render cursor-point if needed */
+			bool do_cursor_render_now =
+				do_point_render && current_height == cursor_row
+				&& (i == cursor_col || i - 1 == cursor_col);
+
+			if (do_cursor_render_now) {
+				const char* effect = i == cursor_col ? cursor_on : cursor_off;
+				const size_t jump = i == cursor_col ? cursor_on_length : cursor_off_length;
+
+				memcpy(rendered_content[current_height] + offset + i, effect, jump);
+				offset += jump;
 			}
 
 			rendered_content[current_height][offset + i] = filler;
 		}
 
-		if (
-			window->_internal_currently_focussed
-			&& cursor_rendering == LINEBASED
-			&& current_height == window->_internal_last_cursor_position.row
-		) {
-			strcpy(rendered_content[current_height] + offset + width, cursor_off);
-			offset += strlen(cursor_off);
+		if (do_line_render && current_height == cursor_row) {
+			memcpy(rendered_content[current_height] + offset + width, cursor_off, cursor_off_length);
+			offset += cursor_off_length;
 		}
 
 		rendered_content[current_height][offset + width] = '\0';

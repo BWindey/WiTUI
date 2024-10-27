@@ -1,14 +1,7 @@
 #include <stdbool.h>
+#include <stdio.h>		/* NULL */
 #include <sys/ioctl.h>
 #include "../include/wiTUI.h"
-
-#include <time.h>
-#define time_it(function_call) { \
-	clock_t begin = clock(); \
-	function_call; \
-	clock_t end = clock(); \
-	printf("Time spent calling function " #function_call ": %fms\n", (double)(1000 * (end - begin)) / CLOCKS_PER_SEC); \
-}
 
 int main(void)
 {
@@ -25,10 +18,13 @@ int main(void)
 
 	window01->border.focussed_colour = "\033[94m";
 	window01->border.unfocussed_colour = "\033[34m\033[2m";
+	/*window01->border = (wi_border) { 0 };*/
 	window01->title = " This is a nice title ";
 	window01->footer_alignment = CENTER;
 
 	window02->cursor_rendering = LINEBASED;
+	window20->cursor_rendering = LINEBASED;
+	window12->cursor_rendering = INVISIBLE;
 
 	window02->title = NULL;
 	window02->title_alignment = CENTER;
