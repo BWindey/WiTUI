@@ -40,7 +40,7 @@ amount of space to fill up the terminal-width.
 When the terminal width is not dividable by the amount of flexible windows,
 the remainder 'r' will be divided among the first 'r' windows on the row.
 
-I,m still thinking about how to do the vertical flexibility, I'll probably
+I'm still thinking about how to do the vertical flexibility, I'll probably
 not implement that behaviour for now.
 <!--- TODO: how does this work for vertical expansion? --->
 
