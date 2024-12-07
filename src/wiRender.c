@@ -6,10 +6,10 @@
 #include <termios.h>	/* tcgetattr(), tcsetattr() */
 #include <unistd.h>		/* read(), ICANON, ECHO, ... */
 
-#include "../../WiTesting/wiAssert.h" 	/* wiAssert() */
+#include "wiAssert.h" 	/* wiAssert() */
 
 /* This file implemenets wi_render_frame, wi_show_session */
-#include "../include/wiTUI.h"
+#include "wiTUI.h"
 
 #include <time.h>
 
@@ -19,7 +19,7 @@ typedef struct terminal_size {
 } terminal_size;
 
 /* Get 1 key-press from the user */
-char get_char() {
+char get_char(void) {
 	char buf = 0;
 	struct termios old = {0};
 	/* Save old settings */
@@ -43,7 +43,7 @@ char get_char() {
 	return buf;
 }
 
-void clear_screen() {
+void clear_screen(void) {
 	printf("\033[1;1H\033[2J");
 }
 
@@ -97,7 +97,7 @@ void cursor_go_to_row(int row) {
  *
  * @returns: struct with current terminal size
  */
-terminal_size get_terminal_size() {
+terminal_size get_terminal_size(void) {
 	struct winsize max;
 	ioctl(0, TIOCGWINSZ, &max);
 	return (terminal_size) { max.ws_row, max.ws_col };

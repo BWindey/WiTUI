@@ -1,5 +1,5 @@
-#include "../include/wiTUI.h"			/* declarations */
-#include "../../WiTesting/wiAssert.h"	/* wiAssert() */
+#include "wiTUI.h"			/* declarations */
+#include "wiAssert.h"	/* wiAssert() */
 
 #include <stdbool.h>	/* true, false */
 #include <stdlib.h>		/* malloc(), realloc(), free() */
@@ -45,7 +45,7 @@ wi_window* wi_make_window(void) {
 	return window;
 }
 
-wi_session* wi_make_session() {
+wi_session* wi_make_session(void) {
 	wi_session* session = (wi_session*) malloc(sizeof(wi_session));
 
 	/* Starting with a 1 empty row */

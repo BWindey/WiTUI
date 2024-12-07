@@ -1,7 +1,7 @@
 #include <stdbool.h>
 #include <stdio.h>		/* NULL */
 #include <sys/ioctl.h>
-#include "../include/wiTUI.h"
+#include "wiTUI.h"
 
 int main(void)
 {
