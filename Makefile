@@ -1,12 +1,13 @@
 # Compiler and flags
 CC = gcc
-CFLAGS = -Iinclude -Wall -Wextra -pedantic
+CFLAGS = -I$(INCDIR) -I$(SUBDIR)/WiTesting -Wall -Wextra -pedantic
 
 # Directories
-SRCDIR = src
-INCDIR = include
-OBJDIR = obj
-LIBDIR = lib
+SRCDIR := src
+INCDIR := include
+OBJDIR := obj
+LIBDIR := lib
+SUBDIR := submodules
 
 # Files
 SRC = $(SRCDIR)/wiTUI.c
