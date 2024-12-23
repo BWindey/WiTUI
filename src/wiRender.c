@@ -388,7 +388,7 @@ void render_window(const wi_window* window, int horizontal_offset) {
 		printf("%s", effect);
 		render_window_border(
 			border.corner_top_left, border.side_top, border.corner_top_right,
-			window->title_alignment, window->title, window->_internal_rendered_width
+			border.title_alignment, border.title, window->_internal_rendered_width
 		);
 		printf("\033[0m\n");
 	}
@@ -420,7 +420,7 @@ void render_window(const wi_window* window, int horizontal_offset) {
 		printf("%s", effect);
 		render_window_border(
 			border.corner_bottom_left, border.side_bottom, border.corner_bottom_right,
-			window->footer_alignment, window->footer, window->_internal_rendered_width
+			border.footer_alignment, border.footer, window->_internal_rendered_width
 		);
 		printf("\033[0m\n");
 	}
