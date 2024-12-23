@@ -16,21 +16,21 @@ int main(void)
 
 	session->movement_keys.modifier_key = CTRL;
 
+	/*window01->border = (wi_border) { 0 };*/
 	window01->border.focussed_colour = "\033[94m";
 	window01->border.unfocussed_colour = "\033[34m\033[2m";
-	/*window01->border = (wi_border) { 0 };*/
-	window01->title = " This is a nice title ";
-	window01->footer_alignment = CENTER;
+	window01->border.title = " This is a nice title ";
+	window01->border.footer_alignment = CENTER;
 
 	window02->cursor_rendering = LINEBASED;
 	window20->cursor_rendering = LINEBASED;
 	window12->cursor_rendering = INVISIBLE;
 
-	window02->title = NULL;
-	window02->title_alignment = CENTER;
+	window02->border.title = NULL;
+	window02->border.title_alignment = CENTER;
 	window02->border.focussed_colour = "\033[92m";
 	window02->border.unfocussed_colour = "\033[32m\033[2m";
-	window02->footer_alignment = LEFT;
+	window02->border.footer_alignment = LEFT;
 
 	window11->border.focussed_colour = "\033[91m";
 	window11->border.unfocussed_colour = "\033[31m\033[2m";

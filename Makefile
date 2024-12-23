@@ -33,10 +33,12 @@ $(LIBDIR):
 $(OBJDIR):
 	mkdir -p $(OBJDIR)
 
+test:
+	$(CC) $(CFLAGS) $(SRCDIR)/*.c -o test.out
 
 # Clean up
 clean:
-	rm -rf $(OBJDIR) $(LIBDIR)
+	rm -rf $(OBJDIR) $(LIBDIR) test.out
 
 
-.PHONY: clean all
+.PHONY: clean all test
