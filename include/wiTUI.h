@@ -11,6 +11,14 @@ typedef enum wi_modifier {
 	CTRL, ALT, SHIFT
 } wi_modifier;
 
+typedef enum wi_cursor_rendering {
+	INVISIBLE, LINEBASED, POINTBASED
+} wi_cursor_rendering;
+
+typedef enum wi_info_alignment {
+	LEFT, CENTER, RIGHT
+} wi_info_alignment;
+
 typedef struct wi_movement_keys {
 	char left;
 	char right;
@@ -25,6 +33,11 @@ typedef struct wi_movement_keys {
  * If the border should not be displayed, set the elements to 0/NULL.
  */
 typedef struct wi_border {
+	char* title;
+	char* footer;
+	wi_info_alignment title_alignment;
+	wi_info_alignment footer_alignment;
+
 	char* corner_top_left;
 	char* corner_top_right;
 	char* corner_bottom_right;
@@ -37,27 +50,16 @@ typedef struct wi_border {
 	char* unfocussed_colour;
 } wi_border;
 
-typedef enum wi_cursor_rendering {
-	INVISIBLE, LINEBASED, POINTBASED
-} wi_cursor_rendering;
-
-typedef enum wi_info_alignment {
-	LEFT, CENTER, RIGHT
-} wi_info_alignment;
-
 typedef struct wi_session wi_session;
 typedef struct wi_window wi_window;
 typedef struct wi_window {
 	int width;
 	int height;
-	char* title;
-	char* footer;
-	wi_info_alignment title_alignment;
-	wi_info_alignment footer_alignment;
 
 	/* (HEAP), but each individual content is on the stack */
 	char*** contents;
 	wi_border border;
+
 	bool wrapText;
 	bool store_cursor_position;
 	wi_cursor_rendering cursor_rendering;

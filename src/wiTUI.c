@@ -12,10 +12,6 @@ wi_window* wi_make_window(void) {
 	window->_internal_rendered_width = 10;
 	window->_internal_rendered_height = 10;
 	window->height = 10;
-	window->title = "Test window";
-	window->footer = "q: quit";
-	window->title_alignment = LEFT;
-	window->footer_alignment = RIGHT;
 
 	/* Starting with a 1 empty row*/
 	int rows = 1;
@@ -27,9 +23,14 @@ wi_window* wi_make_window(void) {
 
 	/* Rounded corners, standard focus colour and dim unfocussed colour */
 	window->border = (wi_border) {
+		.title = "Test window",
+		.footer = "q: quit",
+		.title_alignment = LEFT,
+		.footer_alignment = RIGHT,
 		"\u256D", "\u256E", "\u256F", "\u2570",
 		"\u2502", "\u2502", "\u2500", "\u2500",
-		"", "\033[2m"
+		.focussed_colour = "", /* Standard (white) */
+		.unfocussed_colour = "\033[2m" /* Dim */
 	};
 
 	window->wrapText = true;
