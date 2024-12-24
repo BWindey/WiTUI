@@ -62,32 +62,30 @@ char get_char(void) {
 	return buf;
 }
 
-void clear_screen(void) {
+static inline void clear_screen(void) {
 	printf("\033[1;1H\033[2J");
 }
 
-/*
- * Move the terminal cursor up or down.
- * Positive x means down, negative x means up.
- */
-void cursor_move_vertical(int x) {
+static inline void cursor_move_up(unsigned int x) {
 	if (x > 0) {
 		printf("\033[%dA", x);
-	} else if (x < 0) {
-		x = -x;
+	}
+}
+
+static inline void cursor_move_down(unsigned int x) {
+	if (x > 0) {
 		printf("\033[%dB", x);
 	}
 }
 
-/*
- * Move the terminal cursor left or right.
- * Positive y means right, negative y means left.
- */
-void cursor_move_horizontal(int y) {
+static inline void cursor_move_right(unsigned int y) {
 	if (y > 0) {
 		printf("\033[%dC", y);
-	} else if (y < 0) {
-		y = -y;
+	}
+}
+
+static inline void cursor_move_left(unsigned int y) {
+	if (y > 0) {
 		printf("\033[%dD", y);
 	}
 }
@@ -97,8 +95,8 @@ void cursor_move_horizontal(int y) {
  *
  * NOTE: currently unused
  */
-void cursor_go_to(int x, int y) {
-	printf("\033[%d;%dH", y, x);
+void cursor_go_to(int row, int col) {
+	printf("\033[%d;%dH", col, row);
 }
 
 /*
@@ -418,7 +416,7 @@ void render_window(const wi_window* window, int horizontal_offset) {
 			effect = border.unfocussed_colour;
 		}
 
-		cursor_move_horizontal(horizontal_offset);
+		cursor_move_right(horizontal_offset);
 		printf("%s", effect);
 		render_window_border(
 			border.corner_top_left, border.side_top, border.corner_top_right,
@@ -432,7 +430,7 @@ void render_window(const wi_window* window, int horizontal_offset) {
 
 	/* Print rows of content with border surrounding it */
 	for (int i = 0; i < window->_internal_rendered_height; i++) {
-		cursor_move_horizontal(horizontal_offset);
+		cursor_move_right(horizontal_offset);
 
 		if (border.corner_bottom_left != NULL) {
 			printf("%s%s\033[0m", effect, border.side_left);
@@ -450,7 +448,7 @@ void render_window(const wi_window* window, int horizontal_offset) {
 	free(contents);
 
 	if (border.corner_bottom_left != NULL) {
-		cursor_move_horizontal(horizontal_offset);
+		cursor_move_right(horizontal_offset);
 		printf("%s", effect);
 		render_window_border(
 			border.corner_bottom_left, border.side_bottom, border.corner_bottom_right,
@@ -476,9 +474,9 @@ int wi_render_frame(wi_session* session) {
 
 			render_window(window, accumulated_row_width);
 
-			cursor_move_vertical(window->_internal_rendered_height);
+			cursor_move_up(window->_internal_rendered_height);
 			if (window->border.corner_bottom_left != NULL) {
-				cursor_move_vertical(2);
+				cursor_move_up(2);
 			}
 
 			accumulated_row_width += window->_internal_rendered_width + 2;
@@ -486,7 +484,7 @@ int wi_render_frame(wi_session* session) {
 				max_row_height = window->_internal_rendered_height + 2;
 			}
 		}
-		cursor_move_vertical(-max_row_height);
+		cursor_move_down(max_row_height);
 
 		accumulated_height += max_row_height;
 	}
@@ -605,7 +603,7 @@ int render_function(void* arg) {
 			if (session->full_screen || dimensions_changed) {
 				clear_screen();
 			} else {
-				cursor_move_vertical(printed_height);
+				cursor_move_up(printed_height);
 			}
 			printed_height = wi_render_frame(session);
 			atomic_store(&cursor_pos_changed, false);
