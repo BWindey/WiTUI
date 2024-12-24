@@ -588,19 +588,7 @@ void handle(char c, wi_session* session) {
 
 int render_function(void* arg) {
 	wi_session* session = *((wi_session**) arg);
-
-	/* First render */
-	if (session->full_screen) {
-		clear_screen();
-	}
-	calculate_window_dimension(session);
-	int printed_height = wi_render_frame(session);
-
-	/* Sleep for 10ms */
-	thrd_sleep(
-		&(struct timespec) { .tv_sec = 0, .tv_nsec = 1e7 },
-		NULL /* No need to catch remaining time on interupt */
-	);
+	int printed_height = 0;
 
 	while (atomic_load(&keep_running)) {
 		/*
