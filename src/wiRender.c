@@ -21,7 +21,8 @@ typedef struct terminal_size {
 } terminal_size;
 
 atomic_bool keep_running = true;
-mtx_t session_mutex;
+atomic_bool cursor_pos_changed = false;
+
 struct termios old_terminal_settings;
 
 void raw_terminal(void) {
@@ -127,10 +128,25 @@ terminal_size get_terminal_size(void) {
  * When multiple windows have their width set to -1, the available space
  * will be distributed equally between them.
  *
- * @returns: updated session
+ * When the previous window-size is the same as in the previous call, this
+ * will do nothing and return false.
+ *
+ * @returns: if dimensions were re-calculated
  */
-wi_session* calculate_window_dimension(wi_session* session) {
-	const int available_width = get_terminal_size().cols;
+bool calculate_window_dimension(wi_session* session) {
+	static terminal_size previous_size; /* static is auto initialised to 0 */
+	terminal_size current_size = get_terminal_size();
+
+	if (
+		current_size.cols == previous_size.cols
+		&& current_size.rows == previous_size.rows
+	) {
+		return false;
+	}
+	previous_size = current_size;
+
+	const int available_width = current_size.cols;
+
 	wi_window* window;
 
 	for (int row = 0; row < session->_internal_amount_rows; row++) {
@@ -182,7 +198,7 @@ wi_session* calculate_window_dimension(wi_session* session) {
 		}
 	}
 
-	return session;
+	return true;
 }
 
 /*
@@ -451,8 +467,6 @@ int wi_render_frame(wi_session* session) {
 
 	wi_window* window;
 
-	calculate_window_dimension(session);
-
 	for (int row = 0; row < session->_internal_amount_rows; row++) {
 		accumulated_row_width = 0;
 		max_row_height = 0;
@@ -519,23 +533,31 @@ void handle(char c, wi_session* session) {
 		c = get_char();
 		if (c == m_keys.left && session->cursor_start.col > 0) {
 			session->cursor_start.col--;
+			atomic_store(&cursor_pos_changed, true);
 		} else if (c == m_keys.right && session->cursor_start.col + 1 < session->_internal_amount_cols[session->cursor_start.row]) {
 			session->cursor_start.col++;
+			atomic_store(&cursor_pos_changed, true);
 		} else if (c == m_keys.up && session->cursor_start.row > 0) {
 			session->cursor_start.row--;
+			atomic_store(&cursor_pos_changed, true);
 		} else if (c == m_keys.down && session->cursor_start.row + 1 < session->_internal_amount_rows) {
 			session->cursor_start.row++;
+			atomic_store(&cursor_pos_changed, true);
 		}
 
 		/* Then check for normal keys without modifier */
 	} else if (c == m_keys.left && focussed_window->_internal_last_cursor_position.col > 0) {
 		focussed_window->_internal_last_cursor_position.col--;
+		atomic_store(&cursor_pos_changed, true);
 	} else if (c == m_keys.right && focussed_window->_internal_last_cursor_position.col + 1 < focussed_window->_internal_rendered_width) {
 		focussed_window->_internal_last_cursor_position.col++;
+		atomic_store(&cursor_pos_changed, true);
 	} else if (c == m_keys.up && focussed_window->_internal_last_cursor_position.row > 0) {
 		focussed_window->_internal_last_cursor_position.row--;
+		atomic_store(&cursor_pos_changed, true);
 	} else if (c == m_keys.down && focussed_window->_internal_last_cursor_position.row + 1 < focussed_window->_internal_rendered_height) {
 		focussed_window->_internal_last_cursor_position.row++;
+		atomic_store(&cursor_pos_changed, true);
 
 		/* And then check for keys + modifier that produce a single char */
 	} else {
@@ -543,12 +565,16 @@ void handle(char c, wi_session* session) {
 
 		if (c == m_keys.left && session->cursor_start.col > 0) {
 			session->cursor_start.col--;
+			atomic_store(&cursor_pos_changed, true);
 		} else if (c == m_keys.right && session->cursor_start.col + 1 < session->_internal_amount_cols[session->cursor_start.row]) {
 			session->cursor_start.col++;
+			atomic_store(&cursor_pos_changed, true);
 		} else if (c == m_keys.up && session->cursor_start.row > 0) {
 			session->cursor_start.row--;
+			atomic_store(&cursor_pos_changed, true);
 		} else if (c == m_keys.down && session->cursor_start.row + 1 < session->_internal_amount_rows) {
 			session->cursor_start.row++;
+			atomic_store(&cursor_pos_changed, true);
 		}
 	}
 
@@ -567,6 +593,7 @@ int render_function(void* arg) {
 	if (session->full_screen) {
 		clear_screen();
 	}
+	calculate_window_dimension(session);
 	int printed_height = wi_render_frame(session);
 
 	/* Sleep for 10ms */
@@ -576,13 +603,25 @@ int render_function(void* arg) {
 	);
 
 	while (atomic_load(&keep_running)) {
-		if (session->full_screen) {
-			clear_screen();
-		} else {
-			cursor_move_vertical(printed_height);
+		/*
+		 * TODO: when going to smaller window, cursor can be out of of the
+		 * 	window, will need to manually bring it back inside. Need to decide
+		 * 	if that is by bringing it to the most right column on the same line,
+		 * 	or by leaving it on the same character, and thus jumping a few rows
+		 * 	down.
+		 * 	That latter solution seems the cleanest, but REQUIRES scrolling to
+		 * 	be implemented first
+		 */
+		bool dimensions_changed = calculate_window_dimension(session);
+		if (dimensions_changed || atomic_load(&cursor_pos_changed)) {
+			if (session->full_screen || dimensions_changed) {
+				clear_screen();
+			} else {
+				cursor_move_vertical(printed_height);
+			}
+			printed_height = wi_render_frame(session);
+			atomic_store(&cursor_pos_changed, false);
 		}
-
-		printed_height = wi_render_frame(session);
 
 		/* Sleep for 10ms */
 		thrd_sleep(
@@ -646,7 +685,6 @@ wi_result wi_show_session(wi_session* session) {
 
 
 	/* Initialise threading */
-	mtx_init(&session_mutex, mtx_plain);
 	thrd_t render_thread, input_thread;
 
 	/* Start threads, go! */
