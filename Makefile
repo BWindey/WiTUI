@@ -34,7 +34,7 @@ $(OBJDIR):
 	mkdir -p $(OBJDIR)
 
 test:
-	$(CC) $(CFLAGS) $(SRCDIR)/*.c -o test.out
+	$(CC) $(CFLAGS) -g $(SRCDIR)/*.c -o test.out
 
 # Clean up
 clean:
