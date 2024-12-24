@@ -1,14 +1,16 @@
+#include <signal.h>		/* struct sigaction, sigaction, SIGINT */
+#include <stdatomic.h>	/* atomic_bool */
 #include <stdbool.h>	/* true, false */
-#include <stddef.h>
 #include <stdio.h>		/* printf() */
 #include <string.h>		/* strlen() */
 #include <sys/ioctl.h>	/* ioctl() */
 #include <termios.h>	/* tcgetattr(), tcsetattr() */
+#include <threads.h>	/* thrd_t, thrd_create, thrd_join */
 #include <unistd.h>		/* read(), ICANON, ECHO, ... */
 
 #include "wiAssert.h" 	/* wiAssert() */
 
-/* This file implemenets wi_render_frame, wi_show_session */
+/* This file implemenets wi_render_frame, wi_show_session from wiTUI.h */
 #include "wiTUI.h"
 
 #include <time.h>
@@ -18,27 +20,43 @@ typedef struct terminal_size {
 	int cols;
 } terminal_size;
 
-/* Get 1 key-press from the user */
-char get_char(void) {
-	char buf = 0;
-	struct termios old = {0};
+atomic_bool keep_running = true;
+mtx_t session_mutex;
+struct termios old_terminal_settings;
+
+void raw_terminal(void) {
+	old_terminal_settings = (struct termios) {0};
 	/* Save old settings */
-	wiAssert(tcgetattr(0, &old) >= 0, "tcsetattr()");
+	wiAssert(tcgetattr(0, &old_terminal_settings) >= 0, "tcsetattr()");
 
 	/* Set to raw mode */
-	old.c_lflag &= ~ICANON;
-	old.c_lflag &= ~ECHO;
-	old.c_cc[VMIN] = 1;
-	old.c_cc[VTIME] = 0;
-	wiAssert(tcsetattr(0, TCSANOW, &old) >= 0, "tcsetattr ICANON");
+	old_terminal_settings.c_lflag &= ~ICANON;
+	old_terminal_settings.c_lflag &= ~ECHO;
+	old_terminal_settings.c_cc[VMIN] = 1;
+	old_terminal_settings.c_cc[VTIME] = 0;
+	wiAssert(tcsetattr(0, TCSANOW, &old_terminal_settings) >= 0, "tcsetattr ICANON");
+}
+
+void restore_terminal(void) {
+	/* Set back to normal mode */
+	old_terminal_settings.c_lflag |= ICANON;
+	old_terminal_settings.c_lflag |= ECHO;
+	wiAssert(
+		tcsetattr(0, TCSADRAIN, &old_terminal_settings) >= 0,
+		"tcsetattr ~ICANON"
+	);
+}
+
+/* Get 1 key-press from the user, asumes raw terminal. */
+char get_char(void) {
+	char buf = 0;
 
 	long read_result = read(STDIN_FILENO, &buf, 1);
-	wiAssert(read_result >= 0, "Error reading key" );
-
-	/* Set back to normal mode */
-	old.c_lflag |= ICANON;
-	old.c_lflag |= ECHO;
-	wiAssert(tcsetattr(0, TCSADRAIN, &old) >= 0, "tcsetattr ~ICANON");
+	wiAssertCallback(
+		read_result >= 0,
+		restore_terminal(),
+		"Error reading key"
+	);
 
 	return buf;
 }
@@ -542,6 +560,68 @@ void handle(char c, wi_session* session) {
 	session->windows[session->cursor_start.row][session->cursor_start.col]->_internal_currently_focussed = true;
 }
 
+int render_function(void* arg) {
+	wi_session* session = *((wi_session**) arg);
+
+	/* First render */
+	if (session->full_screen) {
+		clear_screen();
+	}
+	int printed_height = wi_render_frame(session);
+
+	/* Sleep for 10ms */
+	thrd_sleep(
+		&(struct timespec) { .tv_sec = 0, .tv_nsec = 1e7 },
+		NULL /* No need to catch remaining time on interupt */
+	);
+
+	while (atomic_load(&keep_running)) {
+		if (session->full_screen) {
+			clear_screen();
+		} else {
+			cursor_move_vertical(printed_height);
+		}
+
+		printed_height = wi_render_frame(session);
+
+		/* Sleep for 10ms */
+		thrd_sleep(
+			&(struct timespec) { .tv_sec = 0, .tv_nsec = 1e7 },
+			NULL /* No need to catch remaining time on interupt */
+		);
+	}
+
+	return 0;
+}
+
+int input_function(void* arg) {
+	wi_session* session = *((wi_session**) arg);
+
+	raw_terminal();
+
+	char c;
+
+	while (atomic_load(&keep_running)) {
+		c = get_char();
+
+		if (c == session->movement_keys.quit) {
+			atomic_store(&keep_running, false);
+		} else {
+			handle(c, session);
+		}
+	}
+
+	restore_terminal();
+
+	return 0;
+}
+
+void handle_sigint(int _) {
+	atomic_store(&keep_running, false);
+	restore_terminal();
+	exit(0);
+}
+
 wi_result wi_show_session(wi_session* session) {
 	wi_result cursor_position = (wi_result) {
 		(wi_position) { 0, 0 },
@@ -551,70 +631,30 @@ wi_result wi_show_session(wi_session* session) {
 	int focus_row = session->cursor_start.row;
 	int focus_col = session->cursor_start.col;
 	wiAssert(
-		session->cursor_start.row < session->_internal_amount_rows,
-		"Can not focus on non-existing window."
-	);
-	wiAssert(
-		session->cursor_start.col < session->_internal_amount_cols[focus_col],
+		session->cursor_start.col < session->_internal_amount_cols[focus_col]
+		&& session->cursor_start.row < session->_internal_amount_rows,
 		"Can not focus on non-existing window."
 	);
 
+	/* Set starting focussed window */
 	session->windows[focus_row][focus_col]->_internal_currently_focussed = true;
 
-	if (session->full_screen) {
-		clear_screen();
-	}
-
-	/* TEMP */
-	double time_rendering = 0.0;
-	int amount_rendered = 0;
-	double current_time;
-	double min_time = 1000000;
-	double max_time = 0;
+	/* Catch ctrl+c for safety, altough quick test said I don't really need it */
+	struct sigaction sa = { 0 };
+	sa.sa_handler = handle_sigint;
+	sigaction(SIGINT, &sa, NULL);
 
 
-	clock_t begin = clock();
-	int printed_height = wi_render_frame(session);
-	current_time = (double) (clock() - begin) * 1000.0 / CLOCKS_PER_SEC;
-	time_rendering += current_time;
-	if (current_time < min_time) {
-		min_time = current_time;
-	}
-	if (current_time > max_time) {
-		max_time = current_time;
-	}
-	amount_rendered++;
+	/* Initialise threading */
+	mtx_init(&session_mutex, mtx_plain);
+	thrd_t render_thread, input_thread;
 
-	int c = get_char();
-	while (c != session->movement_keys.quit) {
-		handle(c, session);
+	/* Start threads, go! */
+	thrd_create(&render_thread, render_function, &session);
+	thrd_create(&input_thread, input_function, &session);
 
-		if (session->full_screen) {
-			clear_screen();
-		} else {
-			cursor_move_vertical(printed_height);
-		}
-
-		begin = clock();
-		printed_height = wi_render_frame(session);
-		current_time = (double) (clock() - begin) * 1000.0 / CLOCKS_PER_SEC;
-		time_rendering += current_time;
-		if (current_time < min_time) {
-			min_time = current_time;
-		}
-		if (current_time > max_time) {
-			max_time = current_time;
-		}
-		amount_rendered++;
-
-		c = get_char();
-	}
-
-	printf("Time spent rendering: 		%f ms\n", time_rendering);
-	printf("Amount of rendering calls: 	%d\n", amount_rendered);
-	printf("Average rendering-time: 	%f ms\n", time_rendering / amount_rendered);
-	printf("Max rendering time: 		%f ms\n", max_time);
-	printf("Min rendering time: 		%f ms\n", min_time);
+	thrd_join(render_thread, NULL);
+	thrd_join(input_thread, NULL);
 
 	return cursor_position;
 }
