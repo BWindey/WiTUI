@@ -26,6 +26,9 @@ atomic_bool cursor_pos_changed = false;
 struct termios old_terminal_settings;
 
 void raw_terminal(void) {
+	/* Hide cursor */
+	printf("\033[?25l");
+
 	old_terminal_settings = (struct termios) {0};
 	/* Save old settings */
 	wiAssert(tcgetattr(0, &old_terminal_settings) >= 0, "tcsetattr()");
@@ -39,6 +42,9 @@ void raw_terminal(void) {
 }
 
 void restore_terminal(void) {
+	/* Un-hide cursor */
+	printf("\033[?25h");
+
 	/* Set back to normal mode */
 	old_terminal_settings.c_lflag |= ICANON;
 	old_terminal_settings.c_lflag |= ECHO;
