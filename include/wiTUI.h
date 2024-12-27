@@ -3,8 +3,8 @@
 #include <stdbool.h> /* true, false */
 
 typedef struct wi_position {
-	int row;
-	int col;
+	unsigned short row;
+	unsigned short col;
 } wi_position;
 
 typedef enum wi_modifier {
@@ -53,8 +53,8 @@ typedef struct wi_border {
 typedef struct wi_session wi_session;
 typedef struct wi_window wi_window;
 typedef struct wi_window {
-	int width;
-	int height;
+	unsigned short width;
+	unsigned short height;
 
 	/* (HEAP), but each individual content is on the stack */
 	char*** contents;
@@ -62,26 +62,22 @@ typedef struct wi_window {
 
 	bool wrapText;
 	bool store_cursor_position;
+
+	/* NOTE: This could be done in a seperate struct and a pointer,
+	 * 	that will take up less space when it is not needed */
 	wi_cursor_rendering cursor_rendering;
 	/* (HEAP) */
 	wi_window** depending_windows;
+	wi_window* depends_on;
+    unsigned short _internal_amount_depending;
 
-	/* Only change this outside library code if you like debugging. */
-    int _internal_amount_depending;
+	unsigned short _internal_content_rows;
+	unsigned short* _internal_content_cols;
 
-	/* Only change this outside library code if you like debugging. */
-	int _internal_content_rows;
-	/* Only change this outside library code if you like debugging (HEAP). */
-	int* _internal_content_cols;
+	unsigned short _internal_rendered_width;
+	unsigned short _internal_rendered_height;
 
-	/* Only change this outside library code if you like debugging. */
-	int _internal_rendered_width;
-	/* Only change this outside library code if you like debugging. */
-	int _internal_rendered_height;
-
-	/* Only change this outside library code if you like debugging. */
 	wi_position _internal_last_cursor_position;
-	/* Only change this outside library code if you like debugging. */
 	bool _internal_currently_focussed;
 } wi_window;
 
@@ -92,10 +88,8 @@ typedef struct wi_session {
 	wi_position cursor_start;
 	wi_movement_keys movement_keys;
 
-	/* Only change this outside library code if you like debugging. */
-	int _internal_amount_rows;
-	/* Only change this outside library code if you like debugging (HEAP). */
-	int* _internal_amount_cols;
+	unsigned short _internal_amount_rows;
+	unsigned short* _internal_amount_cols;
 } wi_session;
 
 typedef struct wi_result {

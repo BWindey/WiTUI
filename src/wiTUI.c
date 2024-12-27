@@ -38,6 +38,7 @@ wi_window* wi_make_window(void) {
 	window->cursor_rendering = POINTBASED;
 
 	window->depending_windows = NULL;
+	window->depends_on = NULL;
 	window->_internal_amount_depending = 0;
 
 	window->_internal_last_cursor_position = (wi_position) { 0, 0 };
