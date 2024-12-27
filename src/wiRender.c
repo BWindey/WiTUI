@@ -257,11 +257,11 @@ int characters_until_wrap(char* content_pointer, int width) {
  */
 char** calculate_contents(
 	const wi_window* window,
-	char* content_pointer,
-	wi_cursor_rendering cursor_rendering
+	char* content_pointer
 ) {
 	const int width = window->_internal_rendered_width;
 	const int height = window->_internal_rendered_height;
+	const wi_cursor_rendering cursor_rendering = window->cursor_rendering;
 
 	const char filler = ' ';
 
@@ -428,7 +428,7 @@ void render_window(const wi_window* window, int horizontal_offset) {
 	}
 
 	/* Don't forget to free this one ;-) */
-	char** contents = calculate_contents(window, window->contents[0][0], window->cursor_rendering);
+	char** contents = calculate_contents(window, window->contents[0][0]);
 
 	/* Print rows of content with border surrounding it */
 	for (int i = 0; i < window->_internal_rendered_height; i++) {
