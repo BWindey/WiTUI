@@ -98,19 +98,15 @@ static inline void cursor_move_left(unsigned int y) {
 
 /*
  * Move the cursor to an absolute position in the terminal.
- *
- * NOTE: currently unused
  */
-void cursor_go_to(int row, int col) {
+static inline void cursor_go_to(int row, int col) {
 	printf("\033[%d;%dH", col, row);
 }
 
 /*
  * Move the cursor to an absolute row in the terminal.
- *
- * NOTE: currently unused
  */
-void cursor_go_to_row(int row) {
+static inline void cursor_go_to_row(int row) {
 	printf("\033[%dH", row);
 }
 
