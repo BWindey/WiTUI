@@ -2,6 +2,7 @@
 #include <stdatomic.h>	/* atomic_bool */
 #include <stdbool.h>	/* true, false */
 #include <stdio.h>		/* printf() */
+#include <stdlib.h>
 #include <string.h>		/* strlen() */
 #include <sys/ioctl.h>	/* ioctl() */
 #include <termios.h>	/* tcgetattr(), tcsetattr() */
@@ -349,6 +350,54 @@ char** calculate_contents(
 	}
 
 	return rendered_content;
+}
+
+struct circular_charp_buffer {
+	int capacity;
+	int first;
+	int last;
+	char** buffer;
+};
+
+struct circular_charp_buffer make_circular_charp_buffer(int capacity) {
+	return (struct circular_charp_buffer) {
+		.capacity = capacity,
+		.first = 0,
+		.last = 0,
+		.buffer = (char**) malloc(sizeof(char*) * capacity)
+	};
+}
+
+void add_to_circular_charp_buffer(struct circular_charp_buffer buffer, char* element) {
+	/* TODO: */
+	buffer.last++;
+	buffer.buffer[buffer.last % buffer.capacity] = element;
+}
+
+void render_window_content(const wi_window* window) {
+	const int window_width = window->_internal_rendered_width;
+	const int window_height = window->_internal_rendered_height;
+
+	int content_row;
+	int content_col;
+
+	if (window->depends_on == NULL || true) {
+		content_row = 0;
+		content_col = 0;
+	} else {
+		/* TODO: implement this and remove the '|| true' */
+		wi_position other_window_cursor =
+			window->depends_on->_internal_last_cursor_position;
+		content_row = other_window_cursor.row;
+		content_col = other_window_cursor.col;
+	}
+
+	const char* content = window->contents[content_row][content_col];
+	const wi_position cursor_pos = window->_internal_last_cursor_position;
+
+	if (window->wrapText) {
+	} else {
+	}
 }
 
 /*
