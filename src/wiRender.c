@@ -10,7 +10,7 @@
 
 #include "wiAssert.h" 	/* wiAssert() */
 
-/* This file implemenets wi_render_frame, wi_show_session from wiTUI.h */
+/* This file implements wi_render_frame, wi_show_session from wiTUI.h */
 #include "wiTUI.h"
 
 #include <time.h>
@@ -42,7 +42,7 @@ void raw_terminal(void) {
 }
 
 void restore_terminal(void) {
-	/* Un-hide cursor */
+	/* Bring back cursor */
 	printf("\033[?25h");
 
 	/* Set back to normal mode */
@@ -54,7 +54,7 @@ void restore_terminal(void) {
 	);
 }
 
-/* Get 1 key-press from the user, asumes raw terminal. */
+/* Get 1 key-press from the user, assumes raw terminal. */
 char get_char(void) {
 	char buf = 0;
 
@@ -211,7 +211,7 @@ bool calculate_window_dimension(wi_session* session) {
  *
  * This will make sure that `content_pointer[wrap]`
  * (`wrap` being the return value)
- * is either a newline, nullbyte, space or '-'.
+ * is either a newline, null byte, space or '-'.
  *
  * When there is a single word on the line that is too long to fit, the word
  * will be split at `width`.
@@ -363,7 +363,7 @@ char** calculate_contents(
  * Does not place a newline.
  * Just renders the given elements, and only does that.
  *
- * The only magick happening, is the alignment.
+ * The only magic happening, is the alignment.
  */
 void render_window_border(
 	const char* left, const char* mid, const char* right,
@@ -618,7 +618,7 @@ int render_function(void* arg) {
 		/* Sleep for 10ms */
 		thrd_sleep(
 			&(struct timespec) { .tv_sec = 0, .tv_nsec = 1e7 },
-			NULL /* No need to catch remaining time on interupt */
+			NULL /* No need to catch remaining time on interrupt */
 		);
 	}
 
@@ -670,7 +670,7 @@ wi_result wi_show_session(wi_session* session) {
 	/* Set starting focussed window */
 	session->windows[focus_row][focus_col]->_internal_currently_focussed = true;
 
-	/* Catch ctrl+c for safety, altough quick test said I don't really need it */
+	/* Catch ctrl+c for safety, although quick test said I don't really need it */
 	struct sigaction sa = { 0 };
 	sa.sa_handler = handle_sigint;
 	sigaction(SIGINT, &sa, NULL);
