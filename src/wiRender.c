@@ -150,22 +150,22 @@ bool calculate_window_dimension(wi_session* session) {
 
 	wi_window* window;
 
-	for (int row = 0; row < session->_internal_amount_rows; row++) {
-		wi_window* windows_to_compute[session->_internal_amount_cols[row]];
+	for (int row = 0; row < session->internal.amount_rows; row++) {
+		wi_window* windows_to_compute[session->internal.amount_cols[row]];
 		int amount_to_compute = 0;
 		int occupied_width = 0;
 
 
 		/* Find windows with width -1,
 		 * the others already can have their rendered width */
-		for (int col = 0; col < session->_internal_amount_cols[row]; col++) {
+		for (int col = 0; col < session->internal.amount_cols[row]; col++) {
 			window = session->windows[row][col];
 			if (window->width == -1) {
 				windows_to_compute[amount_to_compute] = window;
 				amount_to_compute++;
 			} else {
 				/* +2 because border */
-				window->_internal_rendered_width = window->width;
+				window->internal.rendered_width = window->width;
 				occupied_width += session->windows[row][col]->width;
 
 				if (window->border.corner_bottom_left != NULL) {
@@ -187,14 +187,14 @@ bool calculate_window_dimension(wi_session* session) {
 		for (int col = 0; col < amount_to_compute; col++) {
 			/* -2 because border */
 			wi_window* window = windows_to_compute[col];
-			window->_internal_rendered_width = distributed_width;
+			window->internal.rendered_width = distributed_width;
 			if (window->border.corner_bottom_left != NULL) {
-				window->_internal_rendered_width -= 2;
+				window->internal.rendered_width -= 2;
 			}
 
 			/* Distribute left-over among the first windows, to fill screen */
 			if (col < left_over) {
-				windows_to_compute[col]->_internal_rendered_width++;
+				windows_to_compute[col]->internal.rendered_width++;
 			}
 		}
 	}
@@ -243,7 +243,7 @@ int characters_until_wrap(char* content_pointer, int width) {
 /*
  * Calculate how a content will be rendered in the context of the given window,
  * so accounting for:
- * 	- window._internal_rendered_width/height,
+ * 	- window.internal.rendered_width/height,
  * 	- window.wrapText
  * 	- window.cursor_rendering
  * 	- window.cursor_position
@@ -260,8 +260,8 @@ char** calculate_contents(
 	const wi_window* window,
 	char* content_pointer
 ) {
-	const int width = window->_internal_rendered_width;
-	const int height = window->_internal_rendered_height;
+	const int width = window->internal.rendered_width;
+	const int height = window->internal.rendered_height;
 	const wi_cursor_rendering cursor_rendering = window->cursor_rendering;
 
 	const char filler = ' ';
@@ -271,15 +271,15 @@ char** calculate_contents(
 	const size_t cursor_on_length = strlen(cursor_on);
 	const size_t cursor_off_length = strlen(cursor_off);
 
-	const bool do_cursor_render = window->_internal_currently_focussed
+	const bool do_cursor_render = window->internal.currently_focussed
 		&& cursor_rendering != INVISIBLE;
-	const bool do_line_render = window->_internal_currently_focussed
+	const bool do_line_render = window->internal.currently_focussed
 		&& cursor_rendering == LINEBASED;
-	const bool do_point_render = window->_internal_currently_focussed
+	const bool do_point_render = window->internal.currently_focussed
 		&& cursor_rendering == POINTBASED;
 
-	const int cursor_row = window->_internal_last_cursor_position.row;
-	const int cursor_col = window->_internal_last_cursor_position.col;
+	const int cursor_row = window->internal.cursor_position.row;
+	const int cursor_col = window->internal.cursor_position.col;
 
 	size_t amount_to_alloc;
 	int offset;
@@ -375,8 +375,8 @@ void add_to_circular_charp_buffer(struct circular_charp_buffer buffer, char* ele
 }
 
 void render_window_content(const wi_window* window) {
-	const int window_width = window->_internal_rendered_width;
-	const int window_height = window->_internal_rendered_height;
+	const int window_width = window->internal.rendered_width;
+	const int window_height = window->internal.rendered_height;
 
 	int content_row;
 	int content_col;
@@ -387,13 +387,13 @@ void render_window_content(const wi_window* window) {
 	} else {
 		/* TODO: implement this and remove the '|| true' */
 		wi_position other_window_cursor =
-			window->depends_on->_internal_last_cursor_position;
+			window->depends_on->internal.cursor_position;
 		content_row = other_window_cursor.row;
 		content_col = other_window_cursor.col;
 	}
 
-	const char* content = window->contents[content_row][content_col];
-	const wi_position cursor_pos = window->_internal_last_cursor_position;
+	const wi_content content = window->contents[content_row][content_col];
+	const wi_position cursor_pos = window->internal.cursor_position;
 
 	if (window->wrapText) {
 	} else {
@@ -461,7 +461,7 @@ void render_window(const wi_window* window, int horizontal_offset) {
 	char* effect = "";
 
 	if (border.corner_bottom_left != NULL) {
-		if (window->_internal_currently_focussed) {
+		if (window->internal.currently_focussed) {
 			effect = border.focussed_colour;
 		} else {
 			effect = border.unfocussed_colour;
@@ -471,7 +471,7 @@ void render_window(const wi_window* window, int horizontal_offset) {
 		printf("%s", effect);
 		render_window_border(
 			border.corner_top_left, border.side_top, border.corner_top_right,
-			border.title_alignment, border.title, window->_internal_rendered_width
+			border.title_alignment, border.title, window->internal.rendered_width
 		);
 		printf("\033[0m\n");
 	}
@@ -480,7 +480,7 @@ void render_window(const wi_window* window, int horizontal_offset) {
 	char** contents = calculate_contents(window, window->contents[0][0]);
 
 	/* Print rows of content with border surrounding it */
-	for (int i = 0; i < window->_internal_rendered_height; i++) {
+	for (int i = 0; i < window->internal.rendered_height; i++) {
 		cursor_move_right(horizontal_offset);
 
 		if (border.corner_bottom_left != NULL) {
@@ -503,7 +503,7 @@ void render_window(const wi_window* window, int horizontal_offset) {
 		printf("%s", effect);
 		render_window_border(
 			border.corner_bottom_left, border.side_bottom, border.corner_bottom_right,
-			border.footer_alignment, border.footer, window->_internal_rendered_width
+			border.footer_alignment, border.footer, window->internal.rendered_width
 		);
 		printf("\033[0m\n");
 	}
@@ -516,23 +516,23 @@ int wi_render_frame(wi_session* session) {
 
 	wi_window* window;
 
-	for (int row = 0; row < session->_internal_amount_rows; row++) {
+	for (int row = 0; row < session->internal.amount_rows; row++) {
 		accumulated_row_width = 0;
 		max_row_height = 0;
 
-		for (int col = 0; col < session->_internal_amount_cols[row]; col++) {
+		for (int col = 0; col < session->internal.amount_cols[row]; col++) {
 			window = session->windows[row][col];
 
 			render_window(window, accumulated_row_width);
 
-			cursor_move_up(window->_internal_rendered_height);
+			cursor_move_up(window->internal.rendered_height);
 			if (window->border.corner_bottom_left != NULL) {
 				cursor_move_up(2);
 			}
 
-			accumulated_row_width += window->_internal_rendered_width + 2;
-			if (window->_internal_rendered_height + 2 > max_row_height) {
-				max_row_height = window->_internal_rendered_height + 2;
+			accumulated_row_width += window->internal.rendered_width + 2;
+			if (window->internal.rendered_height + 2 > max_row_height) {
+				max_row_height = window->internal.rendered_height + 2;
 			}
 		}
 		cursor_move_down(max_row_height);
@@ -573,7 +573,7 @@ char normalised_key(char c, wi_modifier modifier) {
  */
 void handle(char c, wi_session* session) {
 	wi_window* focussed_window = session->windows[session->cursor_start.row][session->cursor_start.col];
-	focussed_window->_internal_currently_focussed = false;
+	focussed_window->internal.currently_focussed = false;
 
 	wi_movement_keys m_keys = session->movement_keys;
 
@@ -583,29 +583,29 @@ void handle(char c, wi_session* session) {
 		if (c == m_keys.left && session->cursor_start.col > 0) {
 			session->cursor_start.col--;
 			atomic_store(&cursor_pos_changed, true);
-		} else if (c == m_keys.right && session->cursor_start.col + 1 < session->_internal_amount_cols[session->cursor_start.row]) {
+		} else if (c == m_keys.right && session->cursor_start.col + 1 < session->internal.amount_cols[session->cursor_start.row]) {
 			session->cursor_start.col++;
 			atomic_store(&cursor_pos_changed, true);
 		} else if (c == m_keys.up && session->cursor_start.row > 0) {
 			session->cursor_start.row--;
 			atomic_store(&cursor_pos_changed, true);
-		} else if (c == m_keys.down && session->cursor_start.row + 1 < session->_internal_amount_rows) {
+		} else if (c == m_keys.down && session->cursor_start.row + 1 < session->internal.amount_rows) {
 			session->cursor_start.row++;
 			atomic_store(&cursor_pos_changed, true);
 		}
 
 		/* Then check for normal keys without modifier */
-	} else if (c == m_keys.left && focussed_window->_internal_last_cursor_position.col > 0) {
-		focussed_window->_internal_last_cursor_position.col--;
+	} else if (c == m_keys.left && focussed_window->internal.cursor_position.col > 0) {
+		focussed_window->internal.cursor_position.col--;
 		atomic_store(&cursor_pos_changed, true);
-	} else if (c == m_keys.right && focussed_window->_internal_last_cursor_position.col + 1 < focussed_window->_internal_rendered_width) {
-		focussed_window->_internal_last_cursor_position.col++;
+	} else if (c == m_keys.right && focussed_window->internal.cursor_position.col + 1 < focussed_window->internal.rendered_width) {
+		focussed_window->internal.cursor_position.col++;
 		atomic_store(&cursor_pos_changed, true);
-	} else if (c == m_keys.up && focussed_window->_internal_last_cursor_position.row > 0) {
-		focussed_window->_internal_last_cursor_position.row--;
+	} else if (c == m_keys.up && focussed_window->internal.cursor_position.row > 0) {
+		focussed_window->internal.cursor_position.row--;
 		atomic_store(&cursor_pos_changed, true);
-	} else if (c == m_keys.down && focussed_window->_internal_last_cursor_position.row + 1 < focussed_window->_internal_rendered_height) {
-		focussed_window->_internal_last_cursor_position.row++;
+	} else if (c == m_keys.down && focussed_window->internal.cursor_position.row + 1 < focussed_window->internal.rendered_height) {
+		focussed_window->internal.cursor_position.row++;
 		atomic_store(&cursor_pos_changed, true);
 
 		/* And then check for keys + modifier that produce a single char */
@@ -615,24 +615,24 @@ void handle(char c, wi_session* session) {
 		if (c == m_keys.left && session->cursor_start.col > 0) {
 			session->cursor_start.col--;
 			atomic_store(&cursor_pos_changed, true);
-		} else if (c == m_keys.right && session->cursor_start.col + 1 < session->_internal_amount_cols[session->cursor_start.row]) {
+		} else if (c == m_keys.right && session->cursor_start.col + 1 < session->internal.amount_cols[session->cursor_start.row]) {
 			session->cursor_start.col++;
 			atomic_store(&cursor_pos_changed, true);
 		} else if (c == m_keys.up && session->cursor_start.row > 0) {
 			session->cursor_start.row--;
 			atomic_store(&cursor_pos_changed, true);
-		} else if (c == m_keys.down && session->cursor_start.row + 1 < session->_internal_amount_rows) {
+		} else if (c == m_keys.down && session->cursor_start.row + 1 < session->internal.amount_rows) {
 			session->cursor_start.row++;
 			atomic_store(&cursor_pos_changed, true);
 		}
 	}
 
 	/* Sanitize the col-number, because it can be too large now */
-	if (session->cursor_start.col + 1 >= session->_internal_amount_cols[session->cursor_start.row]) {
-		session->cursor_start.col = session->_internal_amount_cols[session->cursor_start.row] - 1;
+	if (session->cursor_start.col + 1 >= session->internal.amount_cols[session->cursor_start.row]) {
+		session->cursor_start.col = session->internal.amount_cols[session->cursor_start.row] - 1;
 	}
 
-	session->windows[session->cursor_start.row][session->cursor_start.col]->_internal_currently_focussed = true;
+	session->windows[session->cursor_start.row][session->cursor_start.col]->internal.currently_focussed = true;
 }
 
 int render_function(void* arg) {
@@ -707,13 +707,13 @@ wi_result wi_show_session(wi_session* session) {
 	int focus_row = session->cursor_start.row;
 	int focus_col = session->cursor_start.col;
 	wiAssert(
-		session->cursor_start.col < session->_internal_amount_cols[focus_col]
-		&& session->cursor_start.row < session->_internal_amount_rows,
+		session->cursor_start.col < session->internal.amount_cols[focus_col]
+		&& session->cursor_start.row < session->internal.amount_rows,
 		"Can not focus on non-existing window."
 	);
 
 	/* Set starting focussed window */
-	session->windows[focus_row][focus_col]->_internal_currently_focussed = true;
+	session->windows[focus_row][focus_col]->internal.currently_focussed = true;
 
 	/* Catch ctrl+c for safety, although quick test said I don't really need it */
 	struct sigaction sa = { 0 };

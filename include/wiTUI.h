@@ -69,16 +69,24 @@ typedef struct wi_window {
 	/* (HEAP) */
 	wi_window** depending_windows;
 	wi_window* depends_on;
-    unsigned short _internal_amount_depending;
 
-	unsigned short _internal_content_rows;
-	unsigned short* _internal_content_cols;
+	/* Internal variables, do not change outside library-code,
+	 * unless you really know what you're doing.
+	 */
+	struct {
+		int amount_depending;
 
-	unsigned short _internal_rendered_width;
-	unsigned short _internal_rendered_height;
+		int content_rows;
+		int* content_cols;
 
-	wi_position _internal_last_cursor_position;
-	bool _internal_currently_focussed;
+		int rendered_width;
+		int rendered_height;
+
+		wi_position cursor_position;
+		wi_position visual_cursor_position;
+
+		bool currently_focussed;
+	} internal;
 } wi_window;
 
 typedef struct wi_session {
@@ -88,8 +96,10 @@ typedef struct wi_session {
 	wi_position cursor_start;
 	wi_movement_keys movement_keys;
 
-	unsigned short _internal_amount_rows;
-	unsigned short* _internal_amount_cols;
+	struct {
+		int amount_rows;
+		int* amount_cols;
+	} internal;
 } wi_session;
 
 typedef struct wi_result {
