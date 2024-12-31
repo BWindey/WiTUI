@@ -52,9 +52,10 @@ typedef struct wi_border {
 
 typedef struct wi_session wi_session;
 typedef struct wi_window wi_window;
+
 typedef struct wi_window {
-	unsigned short width;
-	unsigned short height;
+	int width;
+	int height;
 
 	/* (HEAP), but each individual content is on the stack */
 	char*** contents;
