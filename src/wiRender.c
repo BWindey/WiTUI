@@ -263,26 +263,26 @@ void render_window_content(const wi_window* window, const int horizontal_offset)
 
 	if (window->wrapText) {
 	} else {
-		int firs_line_show = render_offset.row;
-		int last_line_show = firs_line_show + window_height;
+		int first_line_show = render_offset.row;
+		int last_line_show = first_line_show + window_height;
 
-		for (int i = firs_line_show; i < last_line_show; i++) {
+		for (int i = first_line_show; i < last_line_show; i++) {
 			cursor_move_right(horizontal_offset);
-			int col = render_offset.col;
+			int col = 0;
 			print_side_border(border.side_left, effect);
 
 			/* Cursor */
-			if (do_line_render && i - firs_line_show == visual_cursor_pos.row) {
+			if (do_line_render && i - first_line_show == visual_cursor_pos.row) {
 				printf("\033[7m");
 			}
 
 			/* Content */
-			while (i < content->amount_lines && col < (int) content->line_lengths[i] && col < window_width) {
-				if (do_point_render && i - firs_line_show == visual_cursor_pos.row && col - render_offset.col == visual_cursor_pos.col) {
+			while (i < content->amount_lines && col + render_offset.col < (int) content->line_lengths[i] && col < window_width) {
+				if (do_point_render && i - first_line_show == visual_cursor_pos.row && col  == visual_cursor_pos.col) {
 					printf("\033[7m");
 				}
-				printf("%c", content->lines[i][col]);
-				if (do_point_render && i - firs_line_show == visual_cursor_pos.row && col - render_offset.col == visual_cursor_pos.col) {
+				printf("%c", content->lines[i][col + render_offset.col]);
+				if (do_point_render && i - first_line_show == visual_cursor_pos.row && col == visual_cursor_pos.col) {
 					printf("\033[0m");
 				}
 				col++;
@@ -294,7 +294,7 @@ void render_window_content(const wi_window* window, const int horizontal_offset)
 			}
 
 			/* Cursor */
-			if (do_line_render && i - firs_line_show == visual_cursor_pos.row) {
+			if (do_line_render && i - first_line_show == visual_cursor_pos.row) {
 				printf("\033[0m");
 			}
 
@@ -511,7 +511,7 @@ void sanitize_window_cursor_positions(wi_window* window) {
 	const int row_in_content = offset_row + visual_row;
 
 	const int current_line_length = row_in_content < content->amount_lines
-		? content->line_lengths[offset_row + visual_row] : 0;
+		? content->line_lengths[row_in_content] : 0;
 	const int window_width = window->internal.rendered_width;
 
 	if (visual_col >= current_line_length) {
@@ -586,15 +586,18 @@ void wi_scroll_right(wi_session* session) {
 		focussed_window->internal.content_render_offset.col;
 
 	const int fw_width = focussed_window->internal.rendered_width;
-	const int current_line =
-		focussed_window->internal.content_render_offset.col
-		+ focussed_window->internal.content_render_offset.col;
-	const int fw_content_line_length =
-		strlen(
-			wi_get_current_window_content(focussed_window)->lines[current_line]
-		);
 
-	if (fw_visual_col + 1 < fw_width) {
+    const wi_content* content = wi_get_current_window_content(focussed_window);
+    const int current_line =
+		focussed_window->internal.content_render_offset.row
+		+ focussed_window->internal.visual_cursor_position.row;
+
+    const int fw_content_line_length = strlen(content->lines[current_line]);
+
+	if (
+		fw_visual_col + 1 < fw_width
+		&& fw_visual_col + fw_offset_col + 1 < fw_content_line_length
+	) {
 		focussed_window->internal.visual_cursor_position.col++;
 		atomic_store(&cursor_pos_changed, true);
 	} else if (fw_offset_col + fw_width < fw_content_line_length) {
