@@ -44,18 +44,10 @@ I'm still thinking about how to do the vertical flexibility, I'll probably
 not implement that behaviour for now.
 <!--- TODO: how does this work for vertical expansion? --->
 
-Text in a window can be too long for the window size.
-Too long lines can either be wrapped to a new line, or cut off.
-Too many lines will result in a scrollable window.
-This scrolling will leave a line visible around the cursor,
-as long as the bottom or top isn't reached yet.
-When the cursor is line-based, scrolling left and right will be the intuitive
-way, instead of waiting till the invisible cursor reached the end of the line.
-Scrolling past the text-boundaries will do nothing, the cursor will halt.
+Scrolling and wrapping should behave the same as in vim.
 
 The title and footer can internally be the same struct,
 and can have their alignement set to left, right or center.
-<!--- TODO: this is currently just a string rendered left/rigth (hardcoded) --->
 They will be displayed inside the border, and cut off when too large.
 
 The border consists of an array of 8 characters: 4 corners and 4 sides.
@@ -115,6 +107,7 @@ variables so they get updated, but it migth be worth exploring ideas to solve
 this in the library itself. A potential solution migth be a datastructure in the
 session that stores depending windows, which could be a 2D array or a map.
 
+<!-- TODO: I have not thought about this yet... -->
 When lines get wrapped because they are too long, the contents of the wrapped
 part are also moved to a new row. This could mean adding a NULL element so
 that the content of the original line is showed when hovering over the wrapped
@@ -136,7 +129,8 @@ To solve the issue that sometimes you don't want to know the position of the
 cursor in latest window, each window has a setting that dictates whether or not
 it should overwrite the latest position.
 
-> This is necessary in a situation with depending windows.
+#### Why would you not want to know the last cursor position?
+This is necessary in a situation with depending windows.
 Imagine a session with 2 windows next to eachother.
 One holds a table, the second one (depending on the first) has a text field to
 display more info about the current selected row.
@@ -160,6 +154,11 @@ To move between the different windows, the same keys are used,
 but with a modifier-key held. By default this is the control-key.
 This key can be modified by the programmer.
 
+In next versions, keybinds should become way more flexible, allowing the
+programmer to give any keybind with a callback. This callback shall take in the
+active `wi_session*` and the pressed key, and return `void`.
+The library will present some callbacks, like moving the cursor or focus.
+
 
 ## Current restrictions
 This is a list of things that don't have to be completed before calling this
@@ -172,8 +171,6 @@ working, but are things I would like to implement:
 ## Aditional notes
 - There is a potential for better performance by only redrawing parts of the
 screen that have changed.
-This is quite advanced, and should only be implemented if tests indicate that
-performance is troubling.
 
 - Another feature could be to show a scrollbar when scrolling inside a window.
 This scrollbar can be part of the border, and also be configured like the other
@@ -197,7 +194,7 @@ A session is a struct that consists of the following values:
     This setting indicates whether a `clear` should be called before each
     rendered frame. If this is set to `false`, the session will be rendered
     just below the shell-prompt.
-- `cursor_start` (`struct wi_posisition`):
+- `cursor_pos` (`struct wi_posisition`):
     This setting indicates which window should be the first to be in focus.
     The struct holds 2 integers: `.row` and `.col`.
 - `movement_keys` (`struct wi_movement_keys`):
@@ -207,9 +204,10 @@ A session is a struct that consists of the following values:
     and it holds the modifier-key that needs to be pressed with the normal
     key to jump between windows.
     The `.modifier_key` is an enum with following options: `CTRL`, `ALT`, `SHIFT`.
-
-A session also has 2 `_internal...` fields. Do not modify them unless you
-modify `.windows` directly. See the source code in `wiTUI.c` for info how.
+- `internal` (anonymous `struct`);
+    This field holds internal data about the amount of `wi_windows` in the
+    session. I strongly advice to not edit this field, unless you're adding/
+    removing windows from `.windows` without using library-functions.
 
 A session also has the following functions made for them:
 - `void wi_free_session_completely(wi_session*)`:
@@ -242,7 +240,7 @@ A session also has the following functions made for them:
     The defaults are:
         - `.windows` - empty
         - `.full_screen` = `false`
-        - `.cursor_start` = `{ 0, 0 }`
+        - `.cursor_pos` = `{ 0, 0 }`
         - `.movement_keys` = `{ 'h', 'j', 'k', 'l', CTRL }`
     It returns the created session.
 
@@ -268,7 +266,23 @@ A window is a struct that consists of the following values:
     among the first `r` windows with width `-1`. Yep, that math checks out =)
 - `height` (int):
     The height a window should have, excluding a potential border.
-- `title` (char*):
-    The title of a window. It gets rendered in the top-border, so when
-    the window has no border (see later), the title will not be rendered.
-    Set to `NULL` if you don't want a title.
+- `contents` (`wi_content***`):
+    A 2D array on the heap with `wi_content` pointers. I advice to not modify
+    this directly, but to use `wi_add_content_to_window(...)`.
+- `border` (`wi_border`):
+    A struct with the border-information.
+- `wrapText` (`bool`):
+    Whether to wrap long lines inside this window or not.
+- `store_cursor_position` (`bool`):
+    Whether to store the cursor-position inside the parent-session or not.
+- `cursor_rendering` (`wi_cursor_rendering`):
+    An enum (`INVISIBLE`, `LINEBASED`, `POINTBASED`) that tells how to render
+    the cursor inside this window.
+- `depending_windows` (`wi_window**`):
+    An array with windows, will be used to update the right windows later, not
+    in use yet.
+- `depends_on` (`wi_window*`):
+    A pointer to the window this window depends on.
+- `internal` (anonymous `struct`):
+    A struct with values you should not touch, they get updated by the library.
+

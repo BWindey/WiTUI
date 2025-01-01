@@ -2,8 +2,66 @@
 #include "wiAssert.h"	/* wiAssert() */
 
 #include <stdbool.h>	/* true, false */
+#include <stddef.h>		/* size_t */
 #include <stdlib.h>		/* malloc(), realloc(), free() */
-#include <string.h>		/* strdup() */
+#include <string.h>		/* strdup(), strchr(), strlen() */
+
+
+static wi_content* split_lines(char* content) {
+	int internal_amount_lines = 10;
+	int amount_lines = 0;
+	char** lines = (char**) malloc(internal_amount_lines * sizeof(char*));
+	size_t* line_lengths = (size_t*) malloc(internal_amount_lines * sizeof(size_t));
+
+	char* newline = strchr(content, '\n');
+	while (newline != NULL) {
+		if (amount_lines == internal_amount_lines) {
+			internal_amount_lines += 10;
+			lines = (char**) realloc(lines, internal_amount_lines * sizeof(char*));
+			line_lengths =
+				(size_t*) realloc(lines, internal_amount_lines * sizeof(size_t));
+		}
+
+		int length = newline - content;
+		lines[amount_lines] = (char*) malloc((length + 1) * sizeof(char));
+		memcpy(lines[amount_lines], content, length);
+		lines[amount_lines][length] = '\0';
+		line_lengths[amount_lines] = length;
+
+		content += length + 1;
+		amount_lines++;
+
+		newline = strchr(content, '\n');
+	}
+
+	/* Last line in content can be not delimited by '\n' */
+	if (newline == NULL && *content != '\0') {
+		if (amount_lines == internal_amount_lines) {
+			internal_amount_lines += 1;
+			lines = (char**) realloc(lines, internal_amount_lines * sizeof(char*));
+			line_lengths =
+				(size_t*) realloc(lines, internal_amount_lines * sizeof(size_t));
+		}
+
+		int length = strlen(content);
+		lines[amount_lines] = (char*) malloc((length + 1) * sizeof(char));
+		memcpy(lines[amount_lines], content, length);
+		lines[amount_lines][length] = '\0';
+		line_lengths[amount_lines] = length;
+
+		amount_lines++;
+	}
+
+	wi_content* split_contents = (wi_content*) malloc(sizeof(wi_content));
+	*split_contents = (wi_content){
+		.lines = lines,
+		.line_lengths = line_lengths,
+		.amount_lines = amount_lines,
+		.internal_amount_lines = internal_amount_lines
+	};
+
+	return split_contents;
+}
 
 wi_window* wi_make_window(void) {
 	wi_window* window = (wi_window*) malloc(sizeof(wi_window));
@@ -15,7 +73,7 @@ wi_window* wi_make_window(void) {
 
 	/* Starting with a 1 empty row*/
 	int rows = 1;
-	window->contents = (char***) malloc(rows * sizeof(char**));
+	window->contents = (wi_content***) malloc(rows * sizeof(wi_content**));
 	window->contents[0] = NULL;
 	window->internal.content_rows = rows;
 	window->internal.content_cols = (int*) malloc(rows * sizeof(int));
@@ -33,7 +91,7 @@ wi_window* wi_make_window(void) {
 		.unfocussed_colour = "\033[2m" /* Dim */
 	};
 
-	window->wrapText = true;
+	window->wrapText = false;
 	window->store_cursor_position = true;
 	window->cursor_rendering = POINTBASED;
 
@@ -41,7 +99,8 @@ wi_window* wi_make_window(void) {
 	window->depends_on = NULL;
 	window->internal.amount_depending = 0;
 
-	window->internal.cursor_position = (wi_position) { 0, 0 };
+	window->internal.content_render_offset = (wi_position) { 0, 0 };
+	window->internal.visual_cursor_position = (wi_position) { 0, 0 };
 	window->internal.currently_focussed = false;
 
 	return window;
@@ -59,7 +118,7 @@ wi_session* wi_make_session(void) {
 	session->internal.amount_cols[0] = 0;
 
 	session->full_screen = false;
-	session->cursor_start = (wi_position) { 0, 0 };
+	session->cursor_pos = (wi_position) { 0, 0 };
 
 	wi_movement_keys mKeys;
 	mKeys.left = 'h';
@@ -104,11 +163,13 @@ wi_window* wi_add_content_to_window(
 	char* content,
 	const wi_position position
 ) {
+	wi_content* split_content = split_lines(content);
+
 	/* Grow rows if necessary */
 	if (position.row >= window->internal.content_rows) {
-		window->contents = (char***) realloc(
+		window->contents = (wi_content***) realloc(
 			window->contents,
-	 		(position.row + 1) * sizeof(char**)
+	 		(position.row + 1) * sizeof(wi_content**)
 		);
 		wiAssert(window->contents != NULL, "Failed to grow array when adding content to a window");
 
@@ -128,9 +189,9 @@ wi_window* wi_add_content_to_window(
 
 	/* Grow cols if necessary */
 	if (position.col >= window->internal.content_cols[position.row]) {
-		window->contents[position.row] = (char**) realloc(
+		window->contents[position.row] = (wi_content**) realloc(
 			window->contents[position.row],
-			(position.col + 1) * sizeof(char*)
+			(position.col + 1) * sizeof(wi_content*)
 		);
 		wiAssert(window->contents[position.row] != NULL, "Failed to grow array when adding content to a window");
 
@@ -142,7 +203,7 @@ wi_window* wi_add_content_to_window(
 		window->internal.content_cols[position.row] = position.col + 1;
 	}
 
-	window->contents[position.row][position.col] = content;
+	window->contents[position.row][position.col] = split_content;
 
 	return window;
 }
@@ -163,12 +224,22 @@ void wi_free_session_completely(wi_session* session) {
 void wi_free_window(wi_window* window) {
 	free(window->depending_windows);
 
-		free(window->contents[i]);
 	for (int i = 0; i < window->internal.content_rows; i++) {
 		for (int j = 0; j < window->internal.content_cols[i]; j++) {
+			wi_free_content(window->contents[i][j]);
 		}
+		free(window->contents[i]);
 	}
 	free(window->contents);
 	free(window->internal.content_cols);
 	free(window);
+}
+
+void wi_free_content(wi_content* content) {
+	for (int i = 0; i < content->amount_lines; i++) {
+		free(content->lines[i]);
+	}
+	free(content->lines);
+	free(content->line_lengths);
+	free(content);
 }

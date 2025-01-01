@@ -2,7 +2,6 @@
 #include <stdatomic.h>	/* atomic_bool */
 #include <stdbool.h>	/* true, false */
 #include <stdio.h>		/* printf() */
-#include <stdlib.h>
 #include <string.h>		/* strlen() */
 #include <sys/ioctl.h>	/* ioctl() */
 #include <termios.h>	/* tcgetattr(), tcsetattr() */
@@ -73,25 +72,25 @@ static inline void clear_screen(void) {
 	printf("\033[1;1H\033[2J");
 }
 
-static inline void cursor_move_up(unsigned int x) {
+static inline void cursor_move_up(const unsigned int x) {
 	if (x > 0) {
 		printf("\033[%dA", x);
 	}
 }
 
-static inline void cursor_move_down(unsigned int x) {
+static inline void cursor_move_down(const unsigned int x) {
 	if (x > 0) {
 		printf("\033[%dB", x);
 	}
 }
 
-static inline void cursor_move_right(unsigned int y) {
+static inline void cursor_move_right(const unsigned int y) {
 	if (y > 0) {
 		printf("\033[%dC", y);
 	}
 }
 
-static inline void cursor_move_left(unsigned int y) {
+static inline void cursor_move_left(const unsigned int y) {
 	if (y > 0) {
 		printf("\033[%dD", y);
 	}
@@ -100,14 +99,14 @@ static inline void cursor_move_left(unsigned int y) {
 /*
  * Move the cursor to an absolute position in the terminal.
  */
-static inline void cursor_go_to(int row, int col) {
+static inline void cursor_go_to(const int row, const int col) {
 	printf("\033[%d;%dH", col, row);
 }
 
 /*
  * Move the cursor to an absolute row in the terminal.
  */
-static inline void cursor_go_to_row(int row) {
+static inline void cursor_go_to_row(const int row) {
 	printf("\033[%dH", row);
 }
 
@@ -240,163 +239,68 @@ int characters_until_wrap(char* content_pointer, int width) {
 	return wrap;
 }
 
-/*
- * Calculate how a content will be rendered in the context of the given window,
- * so accounting for:
- * 	- window.internal.rendered_width/height,
- * 	- window.wrapText
- * 	- window.cursor_rendering
- * 	- window.cursor_position
- *
- * The content will (if needed) be wrapped or shifted according to the cursor
- * position, and the cursor position will be highlighted if needed.
- *
- * The returned char** is allocated on the heap, and needs to be manually freed.
- * Each element (row) has to be freed, and the array itself too.
- *
- * @returns: string-array with the contents of each line
- */
-char** calculate_contents(
-	const wi_window* window,
-	char* content_pointer
-) {
-	const int width = window->internal.rendered_width;
-	const int height = window->internal.rendered_height;
+static inline void print_side_border(const char* border, const char* effect) {
+	printf("%s%s\033[0m", effect, border);
+}
+
+void render_window_content(const wi_window* window, const int horizontal_offset) {
+	const int window_width = window->internal.rendered_width;
+	const int window_height = window->internal.rendered_height;
+
+	const wi_content* content = wi_get_current_window_content(window);
+	const wi_position render_offset = window->internal.content_render_offset;
+	const wi_position visual_cursor_pos = window->internal.visual_cursor_position;
 	const wi_cursor_rendering cursor_rendering = window->cursor_rendering;
 
-	const char filler = ' ';
+	const wi_border border = window->border;
+	const char* effect = window->internal.currently_focussed ?
+		border.focussed_colour : border.unfocussed_colour;
 
-	const char cursor_on[] = "\033[7m";
-	const char cursor_off[] = "\033[0m";
-	const size_t cursor_on_length = strlen(cursor_on);
-	const size_t cursor_off_length = strlen(cursor_off);
-
-	const bool do_cursor_render = window->internal.currently_focussed
-		&& cursor_rendering != INVISIBLE;
 	const bool do_line_render = window->internal.currently_focussed
 		&& cursor_rendering == LINEBASED;
 	const bool do_point_render = window->internal.currently_focussed
 		&& cursor_rendering == POINTBASED;
 
-	const int cursor_row = window->internal.cursor_position.row;
-	const int cursor_col = window->internal.cursor_position.col;
-
-	size_t amount_to_alloc;
-	int offset;
-
-	char** rendered_content = (char**) malloc(height * sizeof(char*));
-
-	for (int current_height = 0; current_height < height; current_height++) {
-		offset = 0;
-
-		amount_to_alloc = width * sizeof(char) + 1; /* +1 for '\0' */
-		if (do_cursor_render && current_height == cursor_row) {
-			amount_to_alloc += cursor_on_length + cursor_off_length;
-		}
-		rendered_content[current_height] = (char*) malloc(amount_to_alloc);
-
-		if (do_line_render && current_height == cursor_row) {
-			/* memcpy instead of strcpy because we know the length */
-			memcpy(rendered_content[current_height], cursor_on, cursor_on_length);
-			offset = cursor_on_length;
-		}
-
-		int chars_until_wrap = characters_until_wrap(content_pointer, width);
-
-		for (int i = 0; i < chars_until_wrap; i++) {
-			/* Render cursor-point if needed */
-			bool do_cursor_render_now =
-				do_point_render && current_height == cursor_row
-				&& (i == cursor_col || i - 1 == cursor_col);
-
-			if (do_cursor_render_now) {
-				const char* effect = i == cursor_col ? cursor_on : cursor_off;
-				const size_t jump = i == cursor_col ? cursor_on_length : cursor_off_length;
-
-			/* memcpy instead of strcpy because we know the length */
-				memcpy(rendered_content[current_height] + offset + i, effect, jump);
-				offset += jump;
-			}
-
-			rendered_content[current_height][offset + i] = *content_pointer;
-			content_pointer++;
-		}
-		if (*content_pointer == '\n') {
-			content_pointer++;
-		}
-		for (int i = chars_until_wrap; i < width; i++) {
-			/* Render cursor-point if needed */
-			bool do_cursor_render_now =
-				do_point_render && current_height == cursor_row
-				&& (i == cursor_col || i - 1 == cursor_col);
-
-			if (do_cursor_render_now) {
-				const char* effect = i == cursor_col ? cursor_on : cursor_off;
-				const size_t jump = i == cursor_col ? cursor_on_length : cursor_off_length;
-
-				memcpy(rendered_content[current_height] + offset + i, effect, jump);
-				offset += jump;
-			}
-
-			rendered_content[current_height][offset + i] = filler;
-		}
-
-		if (do_line_render && current_height == cursor_row) {
-			memcpy(rendered_content[current_height] + offset + width, cursor_off, cursor_off_length);
-			offset += cursor_off_length;
-		}
-
-		rendered_content[current_height][offset + width] = '\0';
-	}
-
-	return rendered_content;
-}
-
-struct circular_charp_buffer {
-	int capacity;
-	int first;
-	int last;
-	char** buffer;
-};
-
-struct circular_charp_buffer make_circular_charp_buffer(int capacity) {
-	return (struct circular_charp_buffer) {
-		.capacity = capacity,
-		.first = 0,
-		.last = 0,
-		.buffer = (char**) malloc(sizeof(char*) * capacity)
-	};
-}
-
-void add_to_circular_charp_buffer(struct circular_charp_buffer buffer, char* element) {
-	/* TODO: */
-	buffer.last++;
-	buffer.buffer[buffer.last % buffer.capacity] = element;
-}
-
-void render_window_content(const wi_window* window) {
-	const int window_width = window->internal.rendered_width;
-	const int window_height = window->internal.rendered_height;
-
-	int content_row;
-	int content_col;
-
-	if (window->depends_on == NULL || true) {
-		content_row = 0;
-		content_col = 0;
-	} else {
-		/* TODO: implement this and remove the '|| true' */
-		wi_position other_window_cursor =
-			window->depends_on->internal.cursor_position;
-		content_row = other_window_cursor.row;
-		content_col = other_window_cursor.col;
-	}
-
-	const wi_content content = window->contents[content_row][content_col];
-	const wi_position cursor_pos = window->internal.cursor_position;
-
 	if (window->wrapText) {
 	} else {
+		int firs_line_show = render_offset.row;
+		int last_line_show = firs_line_show + window_height;
+
+		for (int i = firs_line_show; i < last_line_show; i++) {
+			cursor_move_right(horizontal_offset);
+			int col = render_offset.col;
+			print_side_border(border.side_left, effect);
+
+			/* Cursor */
+			if (do_line_render && i - firs_line_show == visual_cursor_pos.row) {
+				printf("\033[7m");
+			}
+
+			/* Content */
+			while (i < content->amount_lines && col < (int) content->line_lengths[i] && col < window_width) {
+				if (do_point_render && i - firs_line_show == visual_cursor_pos.row && col - render_offset.col == visual_cursor_pos.col) {
+					printf("\033[7m");
+				}
+				printf("%c", content->lines[i][col]);
+				if (do_point_render && i - firs_line_show == visual_cursor_pos.row && col - render_offset.col == visual_cursor_pos.col) {
+					printf("\033[0m");
+				}
+				col++;
+			}
+			/* Fill rest of line */
+			while (col < window_width) {
+				printf(" ");
+				col++;
+			}
+
+			/* Cursor */
+			if (do_line_render && i - firs_line_show == visual_cursor_pos.row) {
+				printf("\033[0m");
+			}
+
+			print_side_border(border.side_right, effect);
+			printf("\n");
+		}
 	}
 }
 
@@ -456,8 +360,8 @@ void render_window_border(
  * Render a window at the given `horizontal_offset`.
  * This assumes that the cursor already is at the right vertical space.
  */
-void render_window(const wi_window* window, int horizontal_offset) {
-	wi_border border = window->border;
+void render_window(const wi_window* window, const int horizontal_offset) {
+	const wi_border border = window->border;
 	char* effect = "";
 
 	if (border.corner_bottom_left != NULL) {
@@ -476,27 +380,7 @@ void render_window(const wi_window* window, int horizontal_offset) {
 		printf("\033[0m\n");
 	}
 
-	/* Don't forget to free this one ;-) */
-	char** contents = calculate_contents(window, window->contents[0][0]);
-
-	/* Print rows of content with border surrounding it */
-	for (int i = 0; i < window->internal.rendered_height; i++) {
-		cursor_move_right(horizontal_offset);
-
-		if (border.corner_bottom_left != NULL) {
-			printf("%s%s\033[0m", effect, border.side_left);
-		}
-
-		printf("%s", contents[i]);
-		free(contents[i]);
-
-		if (border.corner_bottom_left != NULL) {
-			printf("\033[0m%s%s\033[0m", effect, border.side_right);
-		}
-		printf("\033[0m\n");
-	}
-
-	free(contents);
+	render_window_content(window, horizontal_offset);
 
 	if (border.corner_bottom_left != NULL) {
 		cursor_move_right(horizontal_offset);
@@ -509,12 +393,24 @@ void render_window(const wi_window* window, int horizontal_offset) {
 	}
 }
 
+void print_debug_info(wi_session* session) {
+	wi_window* focussed_window =
+		session->windows[session->cursor_pos.row][session->cursor_pos.col];
+	wi_position offset = focussed_window->internal.content_render_offset;
+	wi_position visual = focussed_window->internal.visual_cursor_position;
+
+	printf("Visual: { %d, %d }, ", visual.row, visual.col);
+	printf("Offset: { %d, %d }\n", offset.row, offset.col);
+}
+
 int wi_render_frame(wi_session* session) {
 	int accumulated_row_width;
 	int max_row_height;
 	int accumulated_height = 0;
 
 	wi_window* window;
+	clear_screen();
+	print_debug_info(session);
 
 	for (int row = 0; row < session->internal.amount_rows; row++) {
 		accumulated_row_width = 0;
@@ -567,72 +463,259 @@ char normalised_key(char c, wi_modifier modifier) {
 	return 0;
 }
 
+wi_content* wi_get_current_window_content(const wi_window* window) {
+	if (window->depends_on == NULL) {
+		return window->contents[0][0];
+	}
+	wi_window* dep = window->depends_on;
+	wi_position dep_visual_cursor_pos = dep->internal.visual_cursor_position;
+	wi_position dep_content_offset = dep->internal.content_render_offset;
+
+	int row = dep_visual_cursor_pos.row + dep_content_offset.row;
+	int col = dep_visual_cursor_pos.col + dep_content_offset.col;
+
+	if (row >= window->internal.content_rows) {
+		row = window->internal.content_rows - 1;
+	}
+	if (col >= window->internal.content_cols[row]) {
+		col = window->internal.content_cols[row] - 1;
+	}
+
+	while (col > 0 && window->contents[row][col] == NULL) {
+		col--;
+	}
+	while (row > 0 && window->contents[row][col] == NULL) {
+		row--;
+	}
+
+	return window->contents[row][col];
+}
+
+/*
+ * All the scroll-functions first check if we can just move the visual cursor,
+ * and if that's not possible, see if we can move the offset (which will
+ * actually scroll the text).
+ */
+
+/*
+ * GOAL: make it so render_window_content can rely on cursor being on valid
+ * position (so '\0' as last one possible)
+ */
+void sanitize_window_cursor_positions(wi_window* window) {
+	const int visual_row = window->internal.visual_cursor_position.row;
+	const int visual_col = window->internal.visual_cursor_position.col;
+	const int offset_row = window->internal.content_render_offset.row;
+	const int offset_col = window->internal.content_render_offset.col;
+
+	const wi_content* content = wi_get_current_window_content(window);
+	const int row_in_content = offset_row + visual_row;
+
+	const int current_line_length = row_in_content < content->amount_lines
+		? content->line_lengths[offset_row + visual_row] : 0;
+	const int window_width = window->internal.rendered_width;
+
+	if (visual_col >= current_line_length) {
+		if (current_line_length != 0) {
+			window->internal.visual_cursor_position.col = current_line_length - 1;
+		} else {
+			window->internal.visual_cursor_position.col = 0;
+		}
+	}
+	if (offset_col + window_width >= current_line_length) {
+		if (current_line_length - window_width - 1 < 0) {
+			window->internal.content_render_offset.col = 0;
+		} else {
+			window->internal.content_render_offset.col =
+				current_line_length - window_width - 1;
+		}
+	}
+}
+
+void wi_scroll_up(wi_session* session) {
+	wi_window* focussed_window =
+		session->windows[session->cursor_pos.row][session->cursor_pos.col];
+	if (focussed_window->internal.visual_cursor_position.row > 0) {
+		focussed_window->internal.visual_cursor_position.row--;
+		atomic_store(&cursor_pos_changed, true);
+	} else if (focussed_window->internal.content_render_offset.row > 0) {
+		focussed_window->internal.content_render_offset.row--;
+		atomic_store(&cursor_pos_changed, true);
+	}
+	sanitize_window_cursor_positions(focussed_window);
+}
+
+void wi_scroll_down(wi_session* session) {
+	wi_window* focussed_window =
+		session->windows[session->cursor_pos.row][session->cursor_pos.col];
+	int fw_visual_row = focussed_window->internal.visual_cursor_position.row;
+	int fw_offset_row = focussed_window->internal.content_render_offset.row;
+
+	int fw_height = focussed_window->internal.rendered_height;
+	int fw_amount_content_lines =
+		wi_get_current_window_content(focussed_window)->amount_lines;
+
+	if (fw_visual_row + 1 < fw_height) {
+		focussed_window->internal.visual_cursor_position.row++;
+		atomic_store(&cursor_pos_changed, true);
+	} else if (fw_offset_row + fw_height < fw_amount_content_lines) {
+		focussed_window->internal.content_render_offset.row++;
+		atomic_store(&cursor_pos_changed, true);
+	}
+	sanitize_window_cursor_positions(focussed_window);
+}
+
+void wi_scroll_left(wi_session* session) {
+	wi_window* focussed_window =
+		session->windows[session->cursor_pos.row][session->cursor_pos.col];
+	if (focussed_window->internal.visual_cursor_position.col > 0) {
+		focussed_window->internal.visual_cursor_position.col--;
+		atomic_store(&cursor_pos_changed, true);
+	} else if (focussed_window->internal.content_render_offset.col > 0) {
+		focussed_window->internal.content_render_offset.col--;
+		atomic_store(&cursor_pos_changed, true);
+	}
+	sanitize_window_cursor_positions(focussed_window);
+}
+
+void wi_scroll_right(wi_session* session) {
+	wi_window* focussed_window =
+		session->windows[session->cursor_pos.row][session->cursor_pos.col];
+	const int fw_visual_col =
+		focussed_window->internal.visual_cursor_position.col;
+	const int fw_offset_col =
+		focussed_window->internal.content_render_offset.col;
+
+	const int fw_width = focussed_window->internal.rendered_width;
+	const int current_line =
+		focussed_window->internal.content_render_offset.col
+		+ focussed_window->internal.content_render_offset.col;
+	const int fw_content_line_length =
+		strlen(
+			wi_get_current_window_content(focussed_window)->lines[current_line]
+		);
+
+	if (fw_visual_col + 1 < fw_width) {
+		focussed_window->internal.visual_cursor_position.col++;
+		atomic_store(&cursor_pos_changed, true);
+	} else if (fw_offset_col + fw_width < fw_content_line_length) {
+		focussed_window->internal.content_render_offset.col++;
+		atomic_store(&cursor_pos_changed, true);
+	}
+	/*sanitize_window_cursor_positions(focussed_window);*/
+}
+
+void un_focus(wi_session* session) {
+	int cursor_row = session->cursor_pos.row;
+	int cursor_col = session->cursor_pos.col;
+
+	session->windows[cursor_row][cursor_col]
+		->internal.currently_focussed = false;
+}
+
+void focus(wi_session* session) {
+	int cursor_row = session->cursor_pos.row;
+	int cursor_col = session->cursor_pos.col;
+
+	session->windows[cursor_row][cursor_col]
+		->internal.currently_focussed = true;
+}
+
+/*
+ * Sanitize the col-number, because it can be too large when moving focus
+ * from a row with 3 windows to a row with 2 windows.
+ */
+void sanitize_session_column_number(wi_session* session) {
+	int s_cursor_row = session->cursor_pos.row;
+	int s_cursor_col = session->cursor_pos.col;
+	if (s_cursor_col + 1 >= session->internal.amount_cols[s_cursor_row]) {
+		session->cursor_pos.col = session->internal.amount_cols[s_cursor_row] - 1;
+	}
+}
+
+void wi_move_focus_up(wi_session* session) {
+	if (session->cursor_pos.row > 0) {
+		un_focus(session);
+		session->cursor_pos.row--;
+		sanitize_session_column_number(session);
+		focus(session);
+		atomic_store(&cursor_pos_changed, true);
+	}
+}
+
+void wi_move_focus_down(wi_session* session) {
+	if (session->cursor_pos.row + 1 < session->internal.amount_rows) {
+		un_focus(session);
+		session->cursor_pos.row++;
+		sanitize_session_column_number(session);
+		focus(session);
+		atomic_store(&cursor_pos_changed, true);
+	}
+}
+
+void wi_move_focus_left(wi_session* session) {
+	if (session->cursor_pos.col > 0) {
+		un_focus(session);
+		session->cursor_pos.col--;
+		focus(session);
+		atomic_store(&cursor_pos_changed, true);
+	}
+}
+
+void wi_move_focus_right(wi_session* session) {
+	int current_col = session->cursor_pos.col;
+	int max_col = session->internal.amount_cols[session->cursor_pos.row];
+	if (current_col + 1 < max_col) {
+		un_focus(session);
+		session->cursor_pos.col++;
+		focus(session);
+		atomic_store(&cursor_pos_changed, true);
+	}
+}
+
 /*
  * Handle off the key-press.
  * This can move the cursor-position between windows, and inside windows.
  */
 void handle(char c, wi_session* session) {
-	wi_window* focussed_window = session->windows[session->cursor_start.row][session->cursor_start.col];
-	focussed_window->internal.currently_focussed = false;
-
 	wi_movement_keys m_keys = session->movement_keys;
 
 	/* First check for ALT, because that's a 2-key combo */
 	if (m_keys.modifier_key == ALT && c == 27) {
 		c = get_char();
-		if (c == m_keys.left && session->cursor_start.col > 0) {
-			session->cursor_start.col--;
-			atomic_store(&cursor_pos_changed, true);
-		} else if (c == m_keys.right && session->cursor_start.col + 1 < session->internal.amount_cols[session->cursor_start.row]) {
-			session->cursor_start.col++;
-			atomic_store(&cursor_pos_changed, true);
-		} else if (c == m_keys.up && session->cursor_start.row > 0) {
-			session->cursor_start.row--;
-			atomic_store(&cursor_pos_changed, true);
-		} else if (c == m_keys.down && session->cursor_start.row + 1 < session->internal.amount_rows) {
-			session->cursor_start.row++;
-			atomic_store(&cursor_pos_changed, true);
+		if (c == m_keys.left) {
+			wi_move_focus_left(session);
+		} else if (c == m_keys.right) {
+			wi_move_focus_right(session);
+		} else if (c == m_keys.up) {
+			wi_move_focus_up(session);
+		} else if (c == m_keys.down) {
+			wi_move_focus_down(session);
 		}
 
-		/* Then check for normal keys without modifier */
-	} else if (c == m_keys.left && focussed_window->internal.cursor_position.col > 0) {
-		focussed_window->internal.cursor_position.col--;
-		atomic_store(&cursor_pos_changed, true);
-	} else if (c == m_keys.right && focussed_window->internal.cursor_position.col + 1 < focussed_window->internal.rendered_width) {
-		focussed_window->internal.cursor_position.col++;
-		atomic_store(&cursor_pos_changed, true);
-	} else if (c == m_keys.up && focussed_window->internal.cursor_position.row > 0) {
-		focussed_window->internal.cursor_position.row--;
-		atomic_store(&cursor_pos_changed, true);
-	} else if (c == m_keys.down && focussed_window->internal.cursor_position.row + 1 < focussed_window->internal.rendered_height) {
-		focussed_window->internal.cursor_position.row++;
-		atomic_store(&cursor_pos_changed, true);
+	/* Then check for normal keys without modifier */
+	} else if (c == m_keys.left) {
+		wi_scroll_left(session);
+	} else if (c == m_keys.right) {
+		wi_scroll_right(session);
+	} else if (c == m_keys.up) {
+		wi_scroll_up(session);
+	} else if (c == m_keys.down) {
+		wi_scroll_down(session);
 
-		/* And then check for keys + modifier that produce a single char */
+	/* And then check for keys + modifier that produce a single char */
 	} else {
 		c = normalised_key(c, m_keys.modifier_key);
 
-		if (c == m_keys.left && session->cursor_start.col > 0) {
-			session->cursor_start.col--;
-			atomic_store(&cursor_pos_changed, true);
-		} else if (c == m_keys.right && session->cursor_start.col + 1 < session->internal.amount_cols[session->cursor_start.row]) {
-			session->cursor_start.col++;
-			atomic_store(&cursor_pos_changed, true);
-		} else if (c == m_keys.up && session->cursor_start.row > 0) {
-			session->cursor_start.row--;
-			atomic_store(&cursor_pos_changed, true);
-		} else if (c == m_keys.down && session->cursor_start.row + 1 < session->internal.amount_rows) {
-			session->cursor_start.row++;
-			atomic_store(&cursor_pos_changed, true);
+		if (c == m_keys.left) {
+			wi_move_focus_left(session);
+		} else if (c == m_keys.right) {
+			wi_move_focus_right(session);
+		} else if (c == m_keys.up) {
+			wi_move_focus_up(session);
+		} else if (c == m_keys.down) {
+			wi_move_focus_down(session);
 		}
 	}
-
-	/* Sanitize the col-number, because it can be too large now */
-	if (session->cursor_start.col + 1 >= session->internal.amount_cols[session->cursor_start.row]) {
-		session->cursor_start.col = session->internal.amount_cols[session->cursor_start.row] - 1;
-	}
-
-	session->windows[session->cursor_start.row][session->cursor_start.col]->internal.currently_focussed = true;
 }
 
 int render_function(void* arg) {
@@ -704,11 +787,11 @@ wi_result wi_show_session(wi_session* session) {
 		(wi_position) { 0, 0 }
 	};
 
-	int focus_row = session->cursor_start.row;
-	int focus_col = session->cursor_start.col;
+	int focus_row = session->cursor_pos.row;
+	int focus_col = session->cursor_pos.col;
 	wiAssert(
-		session->cursor_start.col < session->internal.amount_cols[focus_col]
-		&& session->cursor_start.row < session->internal.amount_rows,
+		session->cursor_pos.col < session->internal.amount_cols[focus_col]
+		&& session->cursor_pos.row < session->internal.amount_rows,
 		"Can not focus on non-existing window."
 	);
 

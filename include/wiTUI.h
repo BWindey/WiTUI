@@ -1,10 +1,19 @@
 #pragma once
 
-#include <stdbool.h> /* true, false */
+#include <stdbool.h> 	/* true, false */
+#include <stddef.h>		/* size_t */
+
+/* Represents an array of lines that form the content of a window */
+typedef struct {
+	char** lines;
+	size_t* line_lengths; /* Lengths excluding '\0' */
+	int amount_lines;
+	int internal_amount_lines;
+} wi_content;
 
 typedef struct wi_position {
-	unsigned short row;
-	unsigned short col;
+	short row;
+	short col;
 } wi_position;
 
 typedef enum wi_modifier {
@@ -58,7 +67,7 @@ typedef struct wi_window {
 	int height;
 
 	/* (HEAP), but each individual content is on the stack */
-	char*** contents;
+	wi_content*** contents;
 	wi_border border;
 
 	bool wrapText;
@@ -83,7 +92,7 @@ typedef struct wi_window {
 		int rendered_width;
 		int rendered_height;
 
-		wi_position cursor_position;
+		wi_position content_render_offset;
 		wi_position visual_cursor_position;
 
 		bool currently_focussed;
@@ -94,7 +103,7 @@ typedef struct wi_session {
 	/* (HEAP) */
 	wi_window*** windows;
 	bool full_screen;
-	wi_position cursor_start;
+	wi_position cursor_pos;
 	wi_movement_keys movement_keys;
 
 	struct {
@@ -130,6 +139,11 @@ void wi_free_session_completely(wi_session*);
  * @returns: void
  */
 void wi_free_window(wi_window*);
+
+/*
+ * Free the single content of a window.
+ */
+void wi_free_content(wi_content*);
 
 /*
  * Print out one frame.
@@ -206,3 +220,53 @@ wi_window* wi_add_content_to_window(wi_window*, char* content, const wi_position
  * @returns: updated window
  */
 wi_window* wi_set_window_title(wi_window*, char* title);
+
+/*
+ * Scroll up 1 line in the current content.
+ * When that is not possible, do nothing.
+ */
+void wi_scroll_up(wi_session* session);
+/*
+ * Scroll down 1 line in the current content.
+ * When that is not possible, do nothing.
+ */
+void wi_scroll_down(wi_session* session);
+/*
+ * Scroll left 1 character in the current content.
+ * When that is not possible, do nothing.
+ */
+void wi_scroll_left(wi_session* session);
+/*
+ * Scroll right 1 character in the current content.
+ * When that is not possible, do nothing.
+ */
+void wi_scroll_right(wi_session* session);
+
+/*
+ * Move current focus up by 1 window.
+ * When that is not possible, do nothing.
+ */
+void wi_move_focus_up(wi_session* session);
+/*
+ * Move current focus down by 1 window.
+ * When that is not possible, do nothing.
+ */
+void wi_move_focus_down(wi_session* session);
+/*
+ * Move current focus left by 1 window.
+ * When that is not possible, do nothing.
+ */
+void wi_move_focus_left(wi_session* session);
+/*
+ * Move current focus right by 1 window.
+ * When that is not possible, do nothing.
+ */
+void wi_move_focus_right(wi_session* session);
+
+/*
+ * Get the current content from a window by looking at its .depends_on.
+ * For more info, see the README.
+ *
+ * @returns: wi_content struct with current window content
+ */
+wi_content* wi_get_current_window_content(const wi_window* window);
