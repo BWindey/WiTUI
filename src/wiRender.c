@@ -429,6 +429,14 @@ int render_function(void* arg) {
 	wi_session* session = (wi_session*) arg;
 	int printed_height = 0;
 
+
+	/* First calculation so that we don't always clear the screen in the
+	 * beginning of a program, and act like cursor has changed so that an
+	 * initial rendering-draw definitely happens.
+	 * This is a bit awkward, but prevents copying the body-loop here. */
+	calculate_window_dimension(session);
+	atomic_store(&(session->cursor_has_changed), true);
+
 	while (atomic_load(&(session->keep_running))) {
 		/*
 		 * TODO: when going to smaller window, cursor can be out of of the
