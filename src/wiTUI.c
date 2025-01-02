@@ -19,14 +19,22 @@ static wi_content* split_lines(char* content) {
 			internal_amount_lines += 10;
 			lines = (char**) realloc(lines, internal_amount_lines * sizeof(char*));
 			line_lengths =
-				(size_t*) realloc(lines, internal_amount_lines * sizeof(size_t));
+				(size_t*) realloc(line_lengths, internal_amount_lines * sizeof(size_t));
 		}
 
 		int length = newline - content;
-		lines[amount_lines] = (char*) malloc((length + 1) * sizeof(char));
-		memcpy(lines[amount_lines], content, length);
-		lines[amount_lines][length] = '\0';
-		line_lengths[amount_lines] = length;
+		/* If empty line ('\n\n'), then put a single " " so the cursor stays
+		 * visible */
+		if (length == 0) {
+			lines[amount_lines] = (char*) malloc(2 * sizeof(char));
+			strcpy(lines[amount_lines], " ");
+			line_lengths[amount_lines] = 1;
+		} else {
+			lines[amount_lines] = (char*) malloc((length + 1) * sizeof(char));
+			memcpy(lines[amount_lines], content, length);
+			lines[amount_lines][length] = '\0';
+			line_lengths[amount_lines] = length;
+		}
 
 		content += length + 1;
 		amount_lines++;
