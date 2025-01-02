@@ -1,7 +1,9 @@
 #pragma once
 
+#include <stdatomic.h>
 #include <stdbool.h> 	/* true, false */
 #include <stddef.h>		/* size_t */
+#include <termios.h>	/* struct termios */
 
 /* Represents an array of lines that form the content of a window */
 typedef struct {
@@ -105,6 +107,9 @@ typedef struct wi_session {
 	bool full_screen;
 	wi_position cursor_pos;
 	wi_movement_keys movement_keys;
+
+	atomic_bool keep_running;
+	atomic_bool cursor_has_changed;
 
 	struct {
 		int amount_rows;

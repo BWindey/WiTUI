@@ -1,29 +1,37 @@
-# Compiler and flags
-CC = gcc
-CFLAGS = -I$(INCDIR) -I$(SUBDIR)/WiTesting -Wall -Wextra -pedantic
-
 # Directories
 SRCDIR := src
 INCDIR := include
 OBJDIR := obj
 LIBDIR := lib
-SUBDIR := submodules
+TESTDIR := test
 
-# Files
-SRC = $(SRCDIR)/wiTUI.c
-OBJ = $(OBJDIR)/wiTUI.o
-LIB = $(LIBDIR)/libwitui.a
+# Compiler and flags
+CC = gcc
+CFLAGS = -I$(INCDIR) -Isubmodules/WiTesting -Wall -Wextra -pedantic
+
+
+# Library-file name
+LIBRARY = $(LIBDIR)/libwitui.a
+
+# Source and object files
+SRC_FILES = $(wildcard $(SRCDIR)/*.c)
+OBJ_FILES = $(patsubst $(SRCDIR)/%.c,$(OBJDIR)/%.o,$(SRC_FILES))
+
 
 # Default target to build the library
-all: $(LIB)
+all: $(LIBRARY)
+
+test: $(LIBRARY)
+	$(CC) $(CFLAGS) -g $(wildcard $(TESTDIR)/*.c) -o test.out $(LIBRARY)
 
 # Rule to create the static library
-$(LIB): $(OBJ) | $(LIBDIR)
+$(LIBRARY): $(OBJ_FILES) | $(LIBDIR)
 	ar rcs $@ $^
 
-# Rule to compile object file
-$(OBJ): $(SRC) | $(OBJDIR)
+# Rule to compile object files
+$(OBJDIR)/%.o: $(SRCDIR)/%.c | $(OBJDIR)
 	$(CC) $(CFLAGS) -c $< -o $@
+
 
 # Ensure lib directory exists
 $(LIBDIR):
@@ -33,8 +41,6 @@ $(LIBDIR):
 $(OBJDIR):
 	mkdir -p $(OBJDIR)
 
-test:
-	$(CC) $(CFLAGS) -g $(SRCDIR)/*.c -o test.out
 
 # Clean up
 clean:

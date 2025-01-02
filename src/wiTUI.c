@@ -1,6 +1,7 @@
 #include "wiTUI.h"		/* declarations */
 #include "wiAssert.h"	/* wiAssert() */
 
+#include <stdatomic.h>  /* atomic_store */
 #include <stdbool.h>	/* true, false */
 #include <stddef.h>		/* size_t */
 #include <stdlib.h>		/* malloc(), realloc(), free() */
@@ -136,6 +137,9 @@ wi_session* wi_make_session(void) {
 	mKeys.quit = 'q';
 	mKeys.modifier_key = CTRL;
 	session->movement_keys = mKeys;
+
+	atomic_store(&(session->keep_running), true);
+	atomic_store(&(session->cursor_has_changed), false);
 
 	return session;
 }
