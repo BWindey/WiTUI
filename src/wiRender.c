@@ -351,24 +351,12 @@ void render_window(const wi_window* window, const int horizontal_offset) {
 	}
 }
 
-void print_debug_info(wi_session* session) {
-	wi_window* focussed_window =
-		session->windows[session->cursor_pos.row][session->cursor_pos.col];
-	wi_position offset = focussed_window->internal.content_render_offset;
-	wi_position visual = focussed_window->internal.visual_cursor_position;
-
-	printf("Visual: { %d, %d }, ", visual.row, visual.col);
-	printf("Offset: { %d, %d }\n", offset.row, offset.col);
-}
-
 int wi_render_frame(wi_session* session) {
 	int accumulated_row_width;
 	int max_row_height;
 	int accumulated_height = 0;
 
 	wi_window* window;
-	clear_screen();
-	print_debug_info(session);
 
 	for (int row = 0; row < session->internal.amount_rows; row++) {
 		accumulated_row_width = 0;
@@ -438,15 +426,6 @@ int render_function(void* arg) {
 	atomic_store(&(session->cursor_has_changed), true);
 
 	while (atomic_load(&(session->keep_running))) {
-		/*
-		 * TODO: when going to smaller window, cursor can be out of of the
-		 * 	window, will need to manually bring it back inside. Need to decide
-		 * 	if that is by bringing it to the most right column on the same line,
-		 * 	or by leaving it on the same character, and thus jumping a few rows
-		 * 	down.
-		 * 	That latter solution seems the cleanest, but REQUIRES scrolling to
-		 * 	be implemented first
-		 */
 		bool dimensions_changed = calculate_window_dimension(session);
 		if (dimensions_changed || atomic_load(&(session->cursor_has_changed))) {
 			if (session->full_screen || dimensions_changed) {
