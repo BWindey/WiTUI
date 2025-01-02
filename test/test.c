@@ -1,6 +1,4 @@
-#include <stdbool.h>
-#include <stdio.h>		/* NULL */
-#include <sys/ioctl.h>
+#include <stdbool.h>	/* true, false */
 
 #include "wiTUI.h"
 
@@ -14,6 +12,8 @@ int main(void)
 	wi_window* window20 = wi_make_window();
 
 	wi_session* session = wi_make_session();
+
+	window02->wrapText = true;
 
 	session->movement_keys.modifier_key = CTRL;
 
@@ -112,7 +112,7 @@ int main(void)
 	wi_add_window_to_session(session, window11, 1);
 	wi_add_window_to_session(session, window12, 1);
 	wi_add_window_to_session(session, window13, 1);
-	wi_add_window_to_session(session, window20, 2);
+	/*wi_add_window_to_session(session, window20, 2);*/
 
 	/*wi_render_frame(session);*/
 	wi_show_session(session);
