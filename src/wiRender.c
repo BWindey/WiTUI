@@ -276,13 +276,20 @@ void render_window_content(const wi_window* window, const int horizontal_offset)
 				printf("\033[7m");
 			}
 
+			int line_length = i < content->amount_lines
+				? content->line_lengths[i] : 0;
+
 			/* Content */
-			while (i < content->amount_lines && col + render_offset.col < (int) content->line_lengths[i] && col < window_width) {
-				if (do_point_render && i - first_line_show == visual_cursor_pos.row && col  == visual_cursor_pos.col) {
+			while (col + render_offset.col < line_length && col < window_width) {
+				bool render_cursor_now =
+					do_point_render
+					&& i == visual_cursor_pos.row + first_line_show
+					&& col == visual_cursor_pos.col;
+				if (render_cursor_now) {
 					printf("\033[7m");
 				}
 				printf("%c", content->lines[i][col + render_offset.col]);
-				if (do_point_render && i - first_line_show == visual_cursor_pos.row && col == visual_cursor_pos.col) {
+				if (render_cursor_now) {
 					printf("\033[0m");
 				}
 				col++;
