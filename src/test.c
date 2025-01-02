@@ -50,7 +50,14 @@ int main(void)
 	wi_add_content_to_window(
 		window02,
 		"This is a 2nd test!\n\nIt is longer then the previous, and is here to test wrapping. No wrap on word-boundaries yet though, that is to come.\n"
-		"\nIt should\nalso\nnot\ndisplay\nall\nthe content.",
+		"\nIt should\nalso\nnot\ndisplay\nall\nthe content.\n"
+		"It actually did, so now I have to add more\n"
+		"lines to this little window\n"
+		"so I can demonstrate that scrolling\n"
+		"actually works!.\n"
+		"\n"
+		"\n"
+		"This is the last line =)",
 		(wi_position) { 0, 0 }
 	);
 	wi_add_content_to_window(
