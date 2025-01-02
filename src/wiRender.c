@@ -561,6 +561,11 @@ void wi_scroll_down(wi_session* session) {
 	int fw_amount_content_lines =
 		wi_get_current_window_content(focussed_window)->amount_lines;
 
+	/* Don't scroll further then the text */
+	if (fw_visual_row + fw_offset_row + 1 >= fw_amount_content_lines) {
+		return;
+	}
+
 	if (fw_visual_row + 1 < fw_height) {
 		focussed_window->internal.visual_cursor_position.row++;
 		atomic_store(&cursor_pos_changed, true);
@@ -574,14 +579,20 @@ void wi_scroll_down(wi_session* session) {
 void wi_scroll_left(wi_session* session) {
 	wi_window* focussed_window =
 		session->windows[session->cursor_pos.row][session->cursor_pos.col];
-	if (focussed_window->internal.visual_cursor_position.col > 0) {
+
+	const int fw_visual_col =
+		focussed_window->internal.visual_cursor_position.col;
+	const int fw_offset_col =
+		focussed_window->internal.content_render_offset.col;
+	const bool cursor_linebased = focussed_window->cursor_rendering == LINEBASED;
+
+	if (!cursor_linebased && fw_visual_col > 0) {
 		focussed_window->internal.visual_cursor_position.col--;
 		atomic_store(&cursor_pos_changed, true);
-	} else if (focussed_window->internal.content_render_offset.col > 0) {
+	} else if (fw_offset_col > 0) {
 		focussed_window->internal.content_render_offset.col--;
 		atomic_store(&cursor_pos_changed, true);
 	}
-	sanitize_window_cursor_positions(focussed_window);
 }
 
 void wi_scroll_right(wi_session* session) {
@@ -601,8 +612,11 @@ void wi_scroll_right(wi_session* session) {
 
     const int fw_content_line_length = strlen(content->lines[current_line]);
 
+	const bool cursor_linebased = focussed_window->cursor_rendering == LINEBASED;
+
 	if (
-		fw_visual_col + 1 < fw_width
+		!cursor_linebased
+		&& fw_visual_col + 1 < fw_width
 		&& fw_visual_col + fw_offset_col + 1 < fw_content_line_length
 	) {
 		focussed_window->internal.visual_cursor_position.col++;
@@ -611,7 +625,6 @@ void wi_scroll_right(wi_session* session) {
 		focussed_window->internal.content_render_offset.col++;
 		atomic_store(&cursor_pos_changed, true);
 	}
-	/*sanitize_window_cursor_positions(focussed_window);*/
 }
 
 void un_focus(wi_session* session) {
