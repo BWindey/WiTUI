@@ -119,8 +119,9 @@ struct wi_border {
 };
 
 struct wi_content {
+	/* (HEAP) */
 	char** lines;
-	/* Lengths excluding '\0' */
+	/* (HEAP) Lengths excluding '\0' */
 	size_t* line_lengths;
 
 	int amount_lines;
@@ -153,6 +154,8 @@ struct wi_session {
 	atomic_bool keep_running;
 	atomic_bool need_rerender;
 
+	/* Internal variables, do not change outside library-code,
+	 * unless you really know what you're doing. */
 	struct {
 		int amount_rows;
 		int* amount_cols;
