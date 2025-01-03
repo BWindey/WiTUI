@@ -123,6 +123,7 @@ bool calculate_window_dimension(wi_session* session) {
 					occupied_width += 2;
 				}
 			}
+			window->internal.rendered_height = window->height;
 		}
 
 		if (amount_to_compute == 0) {
@@ -496,6 +497,7 @@ int render_function(void* arg) {
 }
 
 void handle_sigint(int _) {
+	(void)(_);
 	restore_terminal();
 	exit(0);
 }
