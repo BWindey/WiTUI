@@ -214,19 +214,19 @@ void render_window_content(const wi_window* window, const int horizontal_offset)
 		&& cursor_rendering == POINTBASED;
 
 	if (window->wrapText) {
-		int render_row = render_offset.row; // Start from the offset row
-		int row = render_row;               // Logical row in the content
-		int rendered_lines = 0;             // Tracks rendered lines in the window
+		int render_row = render_offset.row;
+		int row = render_row;
+		int rendered_lines = 0;
 
 		while (rendered_lines < window_height && row < content->amount_lines) {
 			size_t line_length = content->line_lengths[row];
-			size_t j = 0; // Start of the current row
+			size_t j = 0;
 
 			while (j < line_length && rendered_lines < window_height) {
 				cursor_move_right(horizontal_offset);
 				print_side_border(border.side_left, effect);
 
-				// Calculate how many characters can fit in the current line
+				/* Calculate how many characters can fit in the current line */
 				int chars_til_wrap = characters_until_wrap(
 					&content->lines[row][j], window_width
 				);
@@ -242,14 +242,12 @@ void render_window_content(const wi_window* window, const int horizontal_offset)
 					k++;
 				}
 
-				// Print the right border
 				print_side_border(border.side_right, effect);
 				printf("\n");
 
 				rendered_lines++;
 			}
 
-			// Move to the next logical row in the content
 			row++;
 		}
 		while (rendered_lines < window_height) {

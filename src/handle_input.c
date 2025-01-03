@@ -106,11 +106,7 @@ void sanitize_window_cursor_positions(wi_window* window) {
 	const int window_width = window->internal.rendered_width;
 
 	if (visual_col >= current_line_length) {
-		if (current_line_length != 0) {
-			window->internal.visual_cursor_position.col = current_line_length - 1;
-		} else {
-			window->internal.visual_cursor_position.col = 0;
-		}
+		window->internal.visual_cursor_position.col = current_line_length - 1;
 	}
 	if (offset_col + window_width >= current_line_length) {
 		if (current_line_length - window_width - 1 < 0) {
