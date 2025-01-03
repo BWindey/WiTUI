@@ -240,7 +240,6 @@ void render_window_content(const wi_window* window, const int horizontal_offset)
 				while (k < window_width) {
 					printf(" ");
 					k++;
-					j++;
 				}
 
 				// Print the right border
