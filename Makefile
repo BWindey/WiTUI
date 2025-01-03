@@ -3,7 +3,7 @@ SRCDIR := src
 INCDIR := include
 OBJDIR := obj
 LIBDIR := lib
-TESTDIR := test
+DEMODIR := demo
 
 # Compiler and flags
 CC = gcc
@@ -21,8 +21,8 @@ OBJ_FILES = $(patsubst $(SRCDIR)/%.c,$(OBJDIR)/%.o,$(SRC_FILES))
 # Default target to build the library
 all: $(LIBRARY)
 
-test: $(LIBRARY)
-	$(CC) $(CFLAGS) -g $(wildcard $(TESTDIR)/*.c) -o test.out $(LIBRARY)
+demo: $(LIBRARY)
+	$(CC) $(CFLAGS) -g $(wildcard $(DEMODIR)/*.c) -o demo.out $(LIBRARY)
 
 # Rule to create the static library
 $(LIBRARY): $(OBJ_FILES) | $(LIBDIR)
@@ -44,7 +44,7 @@ $(OBJDIR):
 
 # Clean up
 clean:
-	rm -r $(OBJDIR) $(LIBDIR) test.out
+	rm -r $(OBJDIR) $(LIBDIR) demo.out
 
 
-.PHONY: clean all test
+.PHONY: clean all demo

@@ -23,11 +23,12 @@ int main(void)
 
 	window02->cursor_rendering = LINEBASED;
 	window20->cursor_rendering = LINEBASED;
-	window12->cursor_rendering = INVISIBLE;
+	window12->cursor_rendering = LINEBASED;
 
 	window02->border.title = NULL;
 	window02->border.title_alignment = CENTER;
-	window02->border.focussed_colour = "\033[92m";
+	/*window02->border.focussed_colour = "\033[92m";*/
+	window02->border.focussed_colour = "\033[38;2m";
 	window02->border.unfocussed_colour = "\033[32m\033[2m";
 	window02->border.footer_alignment = LEFT;
 
