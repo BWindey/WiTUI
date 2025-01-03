@@ -146,13 +146,13 @@ void sanitize_window_cursor_positions(wi_window* window) {
 void wi_scroll_up(const char _, wi_session* session) {
 	WI_UNUSED(_);
 	wi_window* focussed_window =
-		session->windows[session->cursor_pos.row][session->cursor_pos.col];
+		session->windows[session->focus_pos.row][session->focus_pos.col];
 	if (focussed_window->internal.visual_cursor_position.row > 0) {
 		focussed_window->internal.visual_cursor_position.row--;
-		atomic_store(&(session->cursor_has_changed), true);
+		atomic_store(&(session->need_rerender), true);
 	} else if (focussed_window->internal.content_render_offset.row > 0) {
 		focussed_window->internal.content_render_offset.row--;
-		atomic_store(&(session->cursor_has_changed), true);
+		atomic_store(&(session->need_rerender), true);
 	}
 	sanitize_window_cursor_positions(focussed_window);
 }
@@ -160,7 +160,7 @@ void wi_scroll_up(const char _, wi_session* session) {
 void wi_scroll_down(const char _, wi_session* session) {
 	WI_UNUSED(_);
 	wi_window* focussed_window =
-		session->windows[session->cursor_pos.row][session->cursor_pos.col];
+		session->windows[session->focus_pos.row][session->focus_pos.col];
 	int fw_visual_row = focussed_window->internal.visual_cursor_position.row;
 	int fw_offset_row = focussed_window->internal.content_render_offset.row;
 
@@ -175,10 +175,10 @@ void wi_scroll_down(const char _, wi_session* session) {
 
 	if (fw_visual_row + 1 < fw_height) {
 		focussed_window->internal.visual_cursor_position.row++;
-		atomic_store(&(session->cursor_has_changed), true);
+		atomic_store(&(session->need_rerender), true);
 	} else if (fw_offset_row + fw_height < fw_amount_content_lines) {
 		focussed_window->internal.content_render_offset.row++;
-		atomic_store(&(session->cursor_has_changed), true);
+		atomic_store(&(session->need_rerender), true);
 	}
 	sanitize_window_cursor_positions(focussed_window);
 }
@@ -186,9 +186,9 @@ void wi_scroll_down(const char _, wi_session* session) {
 void wi_scroll_left(const char _, wi_session* session) {
 	WI_UNUSED(_);
 	wi_window* focussed_window =
-		session->windows[session->cursor_pos.row][session->cursor_pos.col];
+		session->windows[session->focus_pos.row][session->focus_pos.col];
 
-	if (focussed_window->wrapText && focussed_window->cursor_rendering == LINEBASED) {
+	if (focussed_window->wrap_text && focussed_window->cursor_rendering == LINEBASED) {
 		return;
 	}
 
@@ -200,19 +200,19 @@ void wi_scroll_left(const char _, wi_session* session) {
 
 	if (!cursor_linebased && fw_visual_col > 0) {
 		focussed_window->internal.visual_cursor_position.col--;
-		atomic_store(&(session->cursor_has_changed), true);
+		atomic_store(&(session->need_rerender), true);
 	} else if (fw_offset_col > 0) {
 		focussed_window->internal.content_render_offset.col--;
-		atomic_store(&(session->cursor_has_changed), true);
+		atomic_store(&(session->need_rerender), true);
 	}
 }
 
 void wi_scroll_right(const char _, wi_session* session) {
 	WI_UNUSED(_);
 	wi_window* focussed_window =
-		session->windows[session->cursor_pos.row][session->cursor_pos.col];
+		session->windows[session->focus_pos.row][session->focus_pos.col];
 
-	if (focussed_window->wrapText && focussed_window->cursor_rendering == LINEBASED) {
+	if (focussed_window->wrap_text && focussed_window->cursor_rendering == LINEBASED) {
 		return;
 	}
 
@@ -238,24 +238,24 @@ void wi_scroll_right(const char _, wi_session* session) {
 		&& fw_visual_col + fw_offset_col + 1 < fw_content_line_length
 	) {
 		focussed_window->internal.visual_cursor_position.col++;
-		atomic_store(&(session->cursor_has_changed), true);
+		atomic_store(&(session->need_rerender), true);
 	} else if (fw_offset_col + fw_width < fw_content_line_length) {
 		focussed_window->internal.content_render_offset.col++;
-		atomic_store(&(session->cursor_has_changed), true);
+		atomic_store(&(session->need_rerender), true);
 	}
 }
 
 void un_focus(wi_session* session) {
-	int cursor_row = session->cursor_pos.row;
-	int cursor_col = session->cursor_pos.col;
+	int cursor_row = session->focus_pos.row;
+	int cursor_col = session->focus_pos.col;
 
 	session->windows[cursor_row][cursor_col]
 		->internal.currently_focussed = false;
 }
 
 void focus(wi_session* session) {
-	int cursor_row = session->cursor_pos.row;
-	int cursor_col = session->cursor_pos.col;
+	int cursor_row = session->focus_pos.row;
+	int cursor_col = session->focus_pos.col;
 
 	session->windows[cursor_row][cursor_col]
 		->internal.currently_focussed = true;
@@ -266,54 +266,54 @@ void focus(wi_session* session) {
  * from a row with 3 windows to a row with 2 windows.
  */
 void sanitize_session_column_number(wi_session* session) {
-	int s_cursor_row = session->cursor_pos.row;
-	int s_cursor_col = session->cursor_pos.col;
+	int s_cursor_row = session->focus_pos.row;
+	int s_cursor_col = session->focus_pos.col;
 	if (s_cursor_col + 1 >= session->internal.amount_cols[s_cursor_row]) {
-		session->cursor_pos.col = session->internal.amount_cols[s_cursor_row] - 1;
+		session->focus_pos.col = session->internal.amount_cols[s_cursor_row] - 1;
 	}
 }
 
 void wi_move_focus_up(const char _, wi_session* session) {
 	WI_UNUSED(_);
-	if (session->cursor_pos.row > 0) {
+	if (session->focus_pos.row > 0) {
 		un_focus(session);
-		session->cursor_pos.row--;
+		session->focus_pos.row--;
 		sanitize_session_column_number(session);
 		focus(session);
-		atomic_store(&(session->cursor_has_changed), true);
+		atomic_store(&(session->need_rerender), true);
 	}
 }
 
 void wi_move_focus_down(const char _, wi_session* session) {
 	WI_UNUSED(_);
-	if (session->cursor_pos.row + 1 < session->internal.amount_rows) {
+	if (session->focus_pos.row + 1 < session->internal.amount_rows) {
 		un_focus(session);
-		session->cursor_pos.row++;
+		session->focus_pos.row++;
 		sanitize_session_column_number(session);
 		focus(session);
-		atomic_store(&(session->cursor_has_changed), true);
+		atomic_store(&(session->need_rerender), true);
 	}
 }
 
 void wi_move_focus_left(const char _, wi_session* session) {
 	WI_UNUSED(_);
-	if (session->cursor_pos.col > 0) {
+	if (session->focus_pos.col > 0) {
 		un_focus(session);
-		session->cursor_pos.col--;
+		session->focus_pos.col--;
 		focus(session);
-		atomic_store(&(session->cursor_has_changed), true);
+		atomic_store(&(session->need_rerender), true);
 	}
 }
 
 void wi_move_focus_right(const char _, wi_session* session) {
 	WI_UNUSED(_);
-	int current_col = session->cursor_pos.col;
-	int max_col = session->internal.amount_cols[session->cursor_pos.row];
+	int current_col = session->focus_pos.col;
+	int max_col = session->internal.amount_cols[session->focus_pos.row];
 	if (current_col + 1 < max_col) {
 		un_focus(session);
-		session->cursor_pos.col++;
+		session->focus_pos.col++;
 		focus(session);
-		atomic_store(&(session->cursor_has_changed), true);
+		atomic_store(&(session->need_rerender), true);
 	}
 }
 

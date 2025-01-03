@@ -214,7 +214,7 @@ void render_window_content(const wi_window* window, const int horizontal_offset)
 	const bool do_point_render = window->internal.currently_focussed
 		&& cursor_rendering == POINTBASED;
 
-	if (window->wrapText) {
+	if (window->wrap_text) {
 		int render_row = render_offset.row;
 		int row = render_row;
 		int rendered_lines = 0;
@@ -472,18 +472,18 @@ int render_function(void* arg) {
 	 * initial rendering-draw definitely happens.
 	 * This is a bit awkward, but prevents copying the body-loop here. */
 	calculate_window_dimension(session);
-	atomic_store(&(session->cursor_has_changed), true);
+	atomic_store(&(session->need_rerender), true);
 
 	while (atomic_load(&(session->keep_running))) {
 		bool dimensions_changed = calculate_window_dimension(session);
-		if (dimensions_changed || atomic_load(&(session->cursor_has_changed))) {
-			if (session->full_screen || dimensions_changed) {
+		if (dimensions_changed || atomic_load(&(session->need_rerender))) {
+			if (session->start_clear_screen || dimensions_changed) {
 				clear_screen();
 			} else {
 				cursor_move_up(printed_height);
 			}
 			printed_height = wi_render_frame(session);
-			atomic_store(&(session->cursor_has_changed), false);
+			atomic_store(&(session->need_rerender), false);
 		}
 
 		/* Sleep for 10ms */
@@ -508,11 +508,11 @@ wi_result wi_show_session(wi_session* session) {
 		(wi_position) { 0, 0 }
 	};
 
-	int focus_row = session->cursor_pos.row;
-	int focus_col = session->cursor_pos.col;
+	int focus_row = session->focus_pos.row;
+	int focus_col = session->focus_pos.col;
 	wiAssert(
-		session->cursor_pos.col < session->internal.amount_cols[focus_col]
-		&& session->cursor_pos.row < session->internal.amount_rows,
+		session->focus_pos.col < session->internal.amount_cols[focus_col]
+		&& session->focus_pos.row < session->internal.amount_rows,
 		"Can not focus on non-existing window."
 	);
 

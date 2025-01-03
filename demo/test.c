@@ -13,7 +13,7 @@ int main(void)
 
 	wi_session* session = wi_make_session();
 
-	window02->wrapText = true;
+	window02->wrap_text = true;
 
 	/*window01->border = (wi_border) { 0 };*/
 	window01->border.focussed_colour = "\033[94m";
@@ -105,7 +105,7 @@ int main(void)
 	window20->width = -1;
 	window20->height = 3;
 
-	session->full_screen = false;
+	session->start_clear_screen = false;
 
 	wi_add_window_to_session(session, window01, 0);
 	wi_add_window_to_session(session, window02, 0);

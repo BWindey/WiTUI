@@ -84,23 +84,23 @@ wi_window* wi_make_window(void) {
 	window->internal.content_cols = NULL;
 
 	window->border = (wi_border) {
-		.title = "Test window",
-		.footer = "q: quit",
+		.title = "",
+		.footer = "",
 		.title_alignment = LEFT,
 		.footer_alignment = RIGHT,
 		/* Rounded corners */
 		"\u256D", "\u256E", "\u256F", "\u2570",
-		"\u2502", "\u2502", "\u2500", "\u2500",
+		"\u2502", "\u2500", "\u2502", "\u2500",
 		.focussed_colour = "", 			/* Standard (white) */
 		.unfocussed_colour = "\033[2m" 	/* Dim */
 	};
 
-	window->wrapText = false;
+	window->wrap_text = false;
 	window->store_cursor_position = true;
 	window->cursor_rendering = POINTBASED;
 
-	window->depending_windows = NULL;
 	window->depends_on = NULL;
+	window->internal.depending_windows = NULL;
 	window->internal.amount_depending = 0;
 
 	window->internal.content_render_offset = (wi_position) { 0, 0 };
@@ -121,8 +121,8 @@ wi_session* wi_make_session(void) {
 	session->internal.amount_cols = (int*) malloc(rows * sizeof(int));
 	session->internal.amount_cols[0] = 0;
 
-	session->full_screen = false;
-	session->cursor_pos = (wi_position) { 0, 0 };
+	session->start_clear_screen = false;
+	session->focus_pos = (wi_position) { 0, 0 };
 
 	/* Start with room for 15, that's enough room for 6 extra keymaps without
 	 * re-allocating. Should be enough for most people. */
@@ -141,7 +141,6 @@ wi_session* wi_make_session(void) {
 	wi_add_keymap_to_session(session, 'q', NONE, wi_quit_rendering);
 
 	atomic_store(&(session->keep_running), true);
-	atomic_store(&(session->cursor_has_changed), false);
 
 	return session;
 }
@@ -258,7 +257,7 @@ void wi_free_session_completely(wi_session* session) {
 }
 
 void wi_free_window(wi_window* window) {
-	free(window->depending_windows);
+	free(window->internal.depending_windows);
 
 	for (int i = 0; i < window->internal.content_rows; i++) {
 		for (int j = 0; j < window->internal.content_cols[i]; j++) {
