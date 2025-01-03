@@ -44,7 +44,7 @@ $(OBJDIR):
 
 # Clean up
 clean:
-	rm -rf $(OBJDIR) $(LIBDIR) test.out
+	rm -r $(OBJDIR) $(LIBDIR) test.out
 
 
 .PHONY: clean all test
