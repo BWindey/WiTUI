@@ -5,7 +5,7 @@
 #include <fcntl.h>		/* fcntl(), F_GETFLS, O_NONBLOCK */
 #include <errno.h>		/* errno, EAGAIN, EWOULDBLOCK */
 
-#include "wiTUI.h"
+#include "wi_tui.h"
 #include "wiAssert.h"
 #include "wi_internals.h"
 

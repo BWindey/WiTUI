@@ -1,4 +1,4 @@
-#include "wiTUI.h"		/* declarations */
+#include "wi_tui.h"		/* declarations */
 #include "wiAssert.h"	/* wiAssert() */
 
 #include <stdatomic.h>  /* atomic_store */

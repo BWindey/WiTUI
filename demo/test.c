@@ -1,6 +1,6 @@
 #include <stdbool.h>	/* true, false */
 
-#include "wiTUI.h"
+#include "wi_tui.h"
 
 int main(void)
 {

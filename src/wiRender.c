@@ -11,7 +11,7 @@
 #include "wi_internals.h"	/* input_function() */
 
 /* This file implements wi_render_frame, wi_show_session from wiTUI.h */
-#include "wiTUI.h"
+#include "wi_tui.h"
 
 #include <time.h>
 
