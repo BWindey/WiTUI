@@ -15,8 +15,6 @@ int main(void)
 
 	window02->wrapText = true;
 
-	session->movement_keys.modifier_key = CTRL;
-
 	/*window01->border = (wi_border) { 0 };*/
 	window01->border.focussed_colour = "\033[94m";
 	window01->border.unfocussed_colour = "\033[34m\033[2m";
@@ -99,11 +97,12 @@ int main(void)
 	window12->width = 30;
 	window13->width = -1;
 
-	window11->height = 15;
-	window12->height = 15;
-	window13->height = 15;
+	window11->height = 5;
+	window12->height = 5;
+	window13->height = 5;
 
 	window20->width = -1;
+	window20->height = 3;
 
 	session->full_screen = false;
 
@@ -112,7 +111,9 @@ int main(void)
 	wi_add_window_to_session(session, window11, 1);
 	wi_add_window_to_session(session, window12, 1);
 	wi_add_window_to_session(session, window13, 1);
-	/*wi_add_window_to_session(session, window20, 2);*/
+	wi_add_window_to_session(session, window20, 2);
+
+	wi_add_keymap_to_session(session, 'e', ALT, wi_scroll_right);
 
 	/*wi_render_frame(session);*/
 	wi_show_session(session);

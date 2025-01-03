@@ -76,28 +76,23 @@ wi_window* wi_make_window(void) {
 	wi_window* window = (wi_window*) malloc(sizeof(wi_window));
 
 	window->width = 10;
-	window->internal.rendered_width = 10;
-	window->internal.rendered_height = 10;
 	window->height = 10;
 
-	/* Starting with a 1 empty row*/
-	int rows = 1;
-	window->contents = (wi_content***) malloc(rows * sizeof(wi_content**));
-	window->contents[0] = NULL;
-	window->internal.content_rows = rows;
-	window->internal.content_cols = (int*) malloc(rows * sizeof(int));
-	window->internal.content_cols[0] = 0;
+	/* Starting without content */
+	window->contents = NULL;
+	window->internal.content_rows = 0;
+	window->internal.content_cols = NULL;
 
-	/* Rounded corners, standard focus colour and dim unfocussed colour */
 	window->border = (wi_border) {
 		.title = "Test window",
 		.footer = "q: quit",
 		.title_alignment = LEFT,
 		.footer_alignment = RIGHT,
+		/* Rounded corners */
 		"\u256D", "\u256E", "\u256F", "\u2570",
 		"\u2502", "\u2502", "\u2500", "\u2500",
-		.focussed_colour = "", /* Standard (white) */
-		.unfocussed_colour = "\033[2m" /* Dim */
+		.focussed_colour = "", 			/* Standard (white) */
+		.unfocussed_colour = "\033[2m" 	/* Dim */
 	};
 
 	window->wrapText = false;
@@ -129,17 +124,45 @@ wi_session* wi_make_session(void) {
 	session->full_screen = false;
 	session->cursor_pos = (wi_position) { 0, 0 };
 
-	wi_movement_keys mKeys;
-	mKeys.left = 'h';
-	mKeys.right = 'l';
-	mKeys.up = 'k';
-	mKeys.down = 'j';
-	mKeys.quit = 'q';
-	mKeys.modifier_key = CTRL;
-	session->movement_keys = mKeys;
+	/* Start with room for 15, that's enough room for 6 extra keymaps without
+	 * re-allocating. Should be enough for most people. */
+	int keymap_array_size = 15;
+	session->keymaps = (wi_keymap*) malloc(keymap_array_size * sizeof(wi_keymap));
+	session->internal.keymap_array_size = keymap_array_size;
+	session->internal.amount_keymaps = 0;
+	wi_add_keymap_to_session(session, 'h', NONE, wi_scroll_left);
+	wi_add_keymap_to_session(session, 'l', NONE, wi_scroll_right);
+	wi_add_keymap_to_session(session, 'k', NONE, wi_scroll_up);
+	wi_add_keymap_to_session(session, 'j', NONE, wi_scroll_down);
+	wi_add_keymap_to_session(session, 'h', CTRL, wi_move_focus_left);
+	wi_add_keymap_to_session(session, 'l', CTRL, wi_move_focus_right);
+	wi_add_keymap_to_session(session, 'k', CTRL, wi_move_focus_up);
+	wi_add_keymap_to_session(session, 'j', CTRL, wi_move_focus_down);
+	wi_add_keymap_to_session(session, 'q', NONE, wi_quit_rendering);
 
 	atomic_store(&(session->keep_running), true);
 	atomic_store(&(session->cursor_has_changed), false);
+
+	return session;
+}
+
+wi_session* wi_add_keymap_to_session(
+	wi_session* session, const char key, const wi_modifier modifier,
+	void (*callback)(const char, wi_session*)
+) {
+	if (session->internal.amount_keymaps == session->internal.keymap_array_size) {
+		session->internal.keymap_array_size += 15;
+		session->keymaps = (wi_keymap*) realloc(
+			session->keymaps,
+			session->internal.keymap_array_size * sizeof(wi_keymap)
+		);
+	}
+	session->keymaps[session->internal.amount_keymaps] = (wi_keymap) {
+		.key = key,
+		.modifier = modifier,
+		.callback = callback
+	};
+	session->internal.amount_keymaps++;
 
 	return session;
 }
@@ -192,7 +215,7 @@ wi_window* wi_add_content_to_window(
 		wiAssert(window->internal.content_cols != NULL, "Failed to grow array when adding content to a window");
 
 		/* Fill in the spaces between old and new */
-		for (int i = window->internal.content_rows; i < position.row; i++) {
+		for (int i = window->internal.content_rows; i <= position.row; i++) {
 			window->contents[i] = NULL;
 			window->internal.content_cols[i] = 0;
 		}
@@ -230,6 +253,7 @@ void wi_free_session_completely(wi_session* session) {
 	}
 	free(session->windows);
 	free(session->internal.amount_cols);
+	free(session->keymaps);
 	free(session);
 }
 

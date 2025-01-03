@@ -2,10 +2,14 @@
 #include <string.h>		/* strlen() */
 #include <unistd.h>		/* read(), ICANON, ECHO, ... */
 #include <termios.h>	/* tcgetattr(), tcsetattr() */
+#include <fcntl.h>		/* fcntl(), F_GETFLS, O_NONBLOCK */
+#include <errno.h>		/* errno, EAGAIN, EWOULDBLOCK */
 
 #include "wiTUI.h"
 #include "wiAssert.h"
 #include "wi_internals.h"
+
+#define WI_UNUSED(x) (void)(x)
 
 struct termios old_terminal_settings;
 
@@ -21,13 +25,22 @@ void raw_terminal(void) {
 	);
 
 	/* Set to raw mode */
-	old_terminal_settings.c_lflag &= ~ICANON;
-	old_terminal_settings.c_lflag &= ~ECHO;
-	old_terminal_settings.c_cc[VMIN] = 1;
-	old_terminal_settings.c_cc[VTIME] = 0;
+	struct termios new_settings = old_terminal_settings;
+	new_settings.c_lflag &= ~ICANON;
+	new_settings.c_lflag &= ~ECHO;
+	new_settings.c_cc[VMIN] = 0;
+	new_settings.c_cc[VTIME] = 0;
 	wiAssert(
-		tcsetattr(0, TCSANOW, &old_terminal_settings) >= 0,
+		tcsetattr(0, TCSANOW, &new_settings) >= 0,
 		"tcsetattr ICANON"
+	);
+
+	/* Set stdin to non-blocking mode */
+    int flags = fcntl(STDIN_FILENO, F_GETFL, 0);
+    wiAssert(flags >= 0, "fcntl F_GETFL failed");
+    wiAssert(
+		fcntl(STDIN_FILENO, F_SETFL, flags | O_NONBLOCK) >= 0,
+		"fcntl F_SETFL failed"
 	);
 }
 
@@ -36,24 +49,37 @@ void restore_terminal(void) {
 	printf("\033[?25h");
 
 	/* Set back to normal mode */
-	old_terminal_settings.c_lflag |= ICANON;
-	old_terminal_settings.c_lflag |= ECHO;
 	wiAssert(
 		tcsetattr(0, TCSADRAIN, &old_terminal_settings) >= 0,
 		"tcsetattr ~ICANON"
 	);
+
+	/* Set stdin back to blocking mode */
+    int flags = fcntl(STDIN_FILENO, F_GETFL, 0);
+    wiAssert(flags >= 0, "fcntl F_GETFL failed");
+    wiAssert(
+		fcntl(STDIN_FILENO, F_SETFL, flags & ~O_NONBLOCK) >= 0,
+		"fcntl F_SETFL failed"
+	);
 }
 
 /* Get 1 key-press from the user, assumes raw terminal. */
-char get_char(void) {
+char wi_get_char(void) {
 	char buf = 0;
 
 	long read_result = read(STDIN_FILENO, &buf, 1);
-	wiAssertCallback(
-		read_result >= 0,
-		restore_terminal(),
-		"Error reading key"
-	);
+	if (read_result < 0) {
+		if (errno == EAGAIN || errno == EWOULDBLOCK) {
+			/* No character is available */
+			return -1;
+		} else {
+			/* Other read error */
+			wiAssertCallback(0, restore_terminal(), "Error reading key");
+		}
+	} else if (read_result == 0) {
+		/* EOF reached (unlikely in interactive mode) */
+		return -1;
+	}
 
 	return buf;
 }
@@ -64,22 +90,21 @@ char get_char(void) {
  * If the character is not in its expected range for the given modifier,
  * it is returned as-is.
  */
-char normalised_key(char c, wi_modifier modifier) {
-	switch (modifier) {
+char convert_key(wi_keymap keymap) {
+	switch (keymap.modifier) {
 		case CTRL:
-			if (c > 0 && c <= 26) {
-				return c + 'a' - 1;
-			}
+			return keymap.key - 'a' + 1;
 			break;
 		case SHIFT:
-			if (c >= 'A' && c <= 'Z') {
-				return c - 'A' + 'a';
-			}
+			return keymap.key - 'a' + 'A';
+			break;
+		case NONE:
+			return keymap.key;
 			break;
 		default:
 			break;
 	}
-	return 0;
+	return -2; /* IMPORTANT: this needs to be != -1 */
 }
 
 /*
@@ -118,7 +143,8 @@ void sanitize_window_cursor_positions(wi_window* window) {
 	}
 }
 
-void wi_scroll_up(wi_session* session) {
+void wi_scroll_up(const char _, wi_session* session) {
+	WI_UNUSED(_);
 	wi_window* focussed_window =
 		session->windows[session->cursor_pos.row][session->cursor_pos.col];
 	if (focussed_window->internal.visual_cursor_position.row > 0) {
@@ -131,7 +157,8 @@ void wi_scroll_up(wi_session* session) {
 	sanitize_window_cursor_positions(focussed_window);
 }
 
-void wi_scroll_down(wi_session* session) {
+void wi_scroll_down(const char _, wi_session* session) {
+	WI_UNUSED(_);
 	wi_window* focussed_window =
 		session->windows[session->cursor_pos.row][session->cursor_pos.col];
 	int fw_visual_row = focussed_window->internal.visual_cursor_position.row;
@@ -156,9 +183,14 @@ void wi_scroll_down(wi_session* session) {
 	sanitize_window_cursor_positions(focussed_window);
 }
 
-void wi_scroll_left(wi_session* session) {
+void wi_scroll_left(const char _, wi_session* session) {
+	WI_UNUSED(_);
 	wi_window* focussed_window =
 		session->windows[session->cursor_pos.row][session->cursor_pos.col];
+
+	if (focussed_window->wrapText && focussed_window->cursor_rendering == LINEBASED) {
+		return;
+	}
 
 	const int fw_visual_col =
 		focussed_window->internal.visual_cursor_position.col;
@@ -175,9 +207,15 @@ void wi_scroll_left(wi_session* session) {
 	}
 }
 
-void wi_scroll_right(wi_session* session) {
+void wi_scroll_right(const char _, wi_session* session) {
+	WI_UNUSED(_);
 	wi_window* focussed_window =
 		session->windows[session->cursor_pos.row][session->cursor_pos.col];
+
+	if (focussed_window->wrapText && focussed_window->cursor_rendering == LINEBASED) {
+		return;
+	}
+
 	const int fw_visual_col =
 		focussed_window->internal.visual_cursor_position.col;
 	const int fw_offset_col =
@@ -235,7 +273,8 @@ void sanitize_session_column_number(wi_session* session) {
 	}
 }
 
-void wi_move_focus_up(wi_session* session) {
+void wi_move_focus_up(const char _, wi_session* session) {
+	WI_UNUSED(_);
 	if (session->cursor_pos.row > 0) {
 		un_focus(session);
 		session->cursor_pos.row--;
@@ -245,7 +284,8 @@ void wi_move_focus_up(wi_session* session) {
 	}
 }
 
-void wi_move_focus_down(wi_session* session) {
+void wi_move_focus_down(const char _, wi_session* session) {
+	WI_UNUSED(_);
 	if (session->cursor_pos.row + 1 < session->internal.amount_rows) {
 		un_focus(session);
 		session->cursor_pos.row++;
@@ -255,7 +295,8 @@ void wi_move_focus_down(wi_session* session) {
 	}
 }
 
-void wi_move_focus_left(wi_session* session) {
+void wi_move_focus_left(const char _, wi_session* session) {
+	WI_UNUSED(_);
 	if (session->cursor_pos.col > 0) {
 		un_focus(session);
 		session->cursor_pos.col--;
@@ -264,7 +305,8 @@ void wi_move_focus_left(wi_session* session) {
 	}
 }
 
-void wi_move_focus_right(wi_session* session) {
+void wi_move_focus_right(const char _, wi_session* session) {
+	WI_UNUSED(_);
 	int current_col = session->cursor_pos.col;
 	int max_col = session->internal.amount_cols[session->cursor_pos.row];
 	if (current_col + 1 < max_col) {
@@ -275,65 +317,37 @@ void wi_move_focus_right(wi_session* session) {
 	}
 }
 
-/*
- * Handle off the key-press.
- * This can move the cursor-position between windows, and inside windows.
- */
-void handle(char c, wi_session* session) {
-	wi_movement_keys m_keys = session->movement_keys;
-
-	/* First check for ALT, because that's a 2-key combo */
-	if (m_keys.modifier_key == ALT && c == 27) {
-		c = get_char();
-		if (c == m_keys.left) {
-			wi_move_focus_left(session);
-		} else if (c == m_keys.right) {
-			wi_move_focus_right(session);
-		} else if (c == m_keys.up) {
-			wi_move_focus_up(session);
-		} else if (c == m_keys.down) {
-			wi_move_focus_down(session);
-		}
-
-	/* Then check for normal keys without modifier */
-	} else if (c == m_keys.left) {
-		wi_scroll_left(session);
-	} else if (c == m_keys.right) {
-		wi_scroll_right(session);
-	} else if (c == m_keys.up) {
-		wi_scroll_up(session);
-	} else if (c == m_keys.down) {
-		wi_scroll_down(session);
-
-	/* And then check for keys + modifier that produce a single char */
-	} else {
-		c = normalised_key(c, m_keys.modifier_key);
-
-		if (c == m_keys.left) {
-			wi_move_focus_left(session);
-		} else if (c == m_keys.right) {
-			wi_move_focus_right(session);
-		} else if (c == m_keys.up) {
-			wi_move_focus_up(session);
-		} else if (c == m_keys.down) {
-			wi_move_focus_down(session);
-		}
-	}
+void wi_quit_rendering(const char _, wi_session* session) {
+	WI_UNUSED(_);
+	atomic_store(&session->keep_running, false);
 }
+
 
 int input_function(void* arg) {
 	wi_session* session = (wi_session*) arg;
+	wi_keymap* key_maps = session->keymaps;
+	int amount_maps = session->internal.amount_keymaps;
+
 	char c;
 
 	raw_terminal();
 
 	while (atomic_load(&(session->keep_running))) {
-		c = get_char();
+		c = wi_get_char();
+		bool alt_mod = false;
 
-		if (c == session->movement_keys.quit) {
-			atomic_store(&(session->keep_running), false);
-		} else {
-			handle(c, session);
+		if (c == 27) {
+			c = wi_get_char();
+			alt_mod = true;
+		}
+
+
+		for (int i = 0; i < amount_maps; i++) {
+			if (alt_mod && key_maps[i].modifier == ALT && key_maps[i].key == c) {
+				key_maps[i].callback(c, session);
+			} else if (c == convert_key(key_maps[i])) {
+				key_maps[i].callback(c, session);
+			}
 		}
 	}
 

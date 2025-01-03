@@ -5,6 +5,10 @@
 #include <stddef.h>		/* size_t */
 #include <termios.h>	/* struct termios */
 
+/* Forward declarations */
+typedef struct wi_session wi_session;
+typedef struct wi_window wi_window;
+
 /* Represents an array of lines that form the content of a window */
 typedef struct {
 	char** lines;
@@ -19,7 +23,7 @@ typedef struct wi_position {
 } wi_position;
 
 typedef enum wi_modifier {
-	CTRL, ALT, SHIFT
+	CTRL, ALT, SHIFT, NONE
 } wi_modifier;
 
 typedef enum wi_cursor_rendering {
@@ -30,14 +34,11 @@ typedef enum wi_info_alignment {
 	LEFT, CENTER, RIGHT
 } wi_info_alignment;
 
-typedef struct wi_movement_keys {
-	char left;
-	char right;
-	char up;
-	char down;
-	char quit;
-	wi_modifier modifier_key;
-} wi_movement_keys;
+typedef struct wi_keymap {
+	wi_modifier modifier;
+	char key;
+	void (*callback)(const char, wi_session*);
+} wi_keymap;
 
 /*
  * A struct to hold border-info.
@@ -60,9 +61,6 @@ typedef struct wi_border {
 	char* focussed_colour;
 	char* unfocussed_colour;
 } wi_border;
-
-typedef struct wi_session wi_session;
-typedef struct wi_window wi_window;
 
 typedef struct wi_window {
 	int width;
@@ -106,7 +104,7 @@ typedef struct wi_session {
 	wi_window*** windows;
 	bool full_screen;
 	wi_position cursor_pos;
-	wi_movement_keys movement_keys;
+	wi_keymap* keymaps;
 
 	atomic_bool keep_running;
 	atomic_bool cursor_has_changed;
@@ -114,6 +112,8 @@ typedef struct wi_session {
 	struct {
 		int amount_rows;
 		int* amount_cols;
+		int amount_keymaps;
+		int keymap_array_size;
 	} internal;
 } wi_session;
 
@@ -230,43 +230,43 @@ wi_window* wi_set_window_title(wi_window*, char* title);
  * Scroll up 1 line in the current content.
  * When that is not possible, do nothing.
  */
-void wi_scroll_up(wi_session* session);
+void wi_scroll_up(const char, wi_session* session);
 /*
  * Scroll down 1 line in the current content.
  * When that is not possible, do nothing.
  */
-void wi_scroll_down(wi_session* session);
+void wi_scroll_down(const char, wi_session* session);
 /*
  * Scroll left 1 character in the current content.
  * When that is not possible, do nothing.
  */
-void wi_scroll_left(wi_session* session);
+void wi_scroll_left(const char, wi_session* session);
 /*
  * Scroll right 1 character in the current content.
  * When that is not possible, do nothing.
  */
-void wi_scroll_right(wi_session* session);
+void wi_scroll_right(const char, wi_session* session);
 
 /*
  * Move current focus up by 1 window.
  * When that is not possible, do nothing.
  */
-void wi_move_focus_up(wi_session* session);
+void wi_move_focus_up(const char, wi_session* session);
 /*
  * Move current focus down by 1 window.
  * When that is not possible, do nothing.
  */
-void wi_move_focus_down(wi_session* session);
+void wi_move_focus_down(const char, wi_session* session);
 /*
  * Move current focus left by 1 window.
  * When that is not possible, do nothing.
  */
-void wi_move_focus_left(wi_session* session);
+void wi_move_focus_left(const char, wi_session* session);
 /*
  * Move current focus right by 1 window.
  * When that is not possible, do nothing.
  */
-void wi_move_focus_right(wi_session* session);
+void wi_move_focus_right(const char, wi_session* session);
 
 /*
  * Get the current content from a window by looking at its .depends_on.
@@ -275,3 +275,24 @@ void wi_move_focus_right(wi_session* session);
  * @returns: wi_content struct with current window content
  */
 wi_content* wi_get_current_window_content(const wi_window* window);
+
+/*
+ * Get 1 character from user.
+ * This function waits until there is 1 character available.
+ */
+char wi_get_char(void);
+
+/*
+ * Stop rendering the session, will give control back to the caller of
+ * wi_show_session().
+ */
+void wi_quit_rendering(const char, wi_session* session);
+
+/*
+ * Add a new keymap to the session.
+ * This function handles resource allocation for you.
+ */
+wi_session* wi_add_keymap_to_session(
+	wi_session* session, const char key, const wi_modifier modifier,
+	void (*callback)(const char, wi_session*)
+);
