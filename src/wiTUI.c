@@ -114,12 +114,9 @@ wi_session* wi_make_session(void) {
 	wi_session* session = (wi_session*) malloc(sizeof(wi_session));
 
 	/* Starting with a 1 empty row */
-	int rows = 1;
-	session->windows = (wi_window***) malloc(rows * sizeof(wi_window**));
-	session->windows[0] = NULL;
-	session->internal.amount_rows = rows;
-	session->internal.amount_cols = (int*) malloc(rows * sizeof(int));
-	session->internal.amount_cols[0] = 0;
+	session->windows = NULL;
+	session->internal.amount_rows = 0;
+	session->internal.amount_cols = NULL;
 
 	session->start_clear_screen = false;
 	session->focus_pos = (wi_position) { 0, 0 };
