@@ -25,10 +25,9 @@ int main(void)
 	window20->cursor_rendering = LINEBASED;
 	window12->cursor_rendering = LINEBASED;
 
-	window02->border.title = NULL;
-	window02->border.title_alignment = CENTER;
-	/*window02->border.focussed_colour = "\033[92m";*/
-	window02->border.focussed_colour = "\033[38;2m";
+	window02->border.focussed_colour = "\033[92m";
+	/* Full RGB */
+	/*window02->border.focussed_colour = "\033[38;2;255;0;0m";*/
 	window02->border.unfocussed_colour = "\033[32m\033[2m";
 	window02->border.footer_alignment = LEFT;
 
@@ -104,8 +103,6 @@ int main(void)
 
 	window20->width = -1;
 	window20->height = 3;
-
-	session->start_clear_screen = false;
 
 	wi_add_window_to_session(session, window01, 0);
 	wi_add_window_to_session(session, window02, 0);
