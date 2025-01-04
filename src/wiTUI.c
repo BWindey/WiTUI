@@ -242,7 +242,7 @@ wi_window* wi_add_content_to_window(
 	return window;
 }
 
-void wi_free_session_completely(wi_session* session) {
+void wi_free_session(wi_session* session) {
 	/* Free all the windows... Yay */
 	for (int i = 0; i < session->internal.amount_rows; i++) {
 		for (int j = 0; j < session->internal.amount_cols[i]; j++) {

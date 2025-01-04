@@ -63,7 +63,6 @@ void restore_terminal(void) {
 	);
 }
 
-/* Get 1 key-press from the user, assumes raw terminal. */
 char wi_get_char(void) {
 	char buf = 0;
 

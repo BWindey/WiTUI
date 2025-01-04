@@ -119,7 +119,7 @@ int main(void)
 	/*wi_render_frame(session);*/
 	wi_show_session(session);
 
-	wi_free_session_completely(session);
+	wi_free_session(session);
 
 	return 0;
 }

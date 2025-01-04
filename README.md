@@ -179,8 +179,8 @@ border-elements.
 
 ## Documentation
 WiTUI works with 2 main objects (structs):
-- wi_window
 - wi_session
+- wi_window
 
 A `wi_session` is the container holding `wi_windows`.
 
@@ -270,16 +270,20 @@ A window is a struct that consists of the following values:
     A 2D array on the heap with `wi_content` pointers. I advice to not modify
     this directly, but to use `wi_add_content_to_window(...)`.
 - `border` (`wi_border`):
-    A struct with the border-information.
-- `wrapText` (`bool`):
+    A struct with the border-information, including title and footer.
+    To have empty parts of the border, set them as empty strings. To disable
+    the whole border at once, set it to `{ 0 }`, or more specifically setting
+    `.corner_bottom_left` to `NULL` will do the trick.
+- `wrap_text` (`bool`):
     Whether to wrap long lines inside this window or not.
+    Leaving this off will enable side-scrolling.
 - `store_cursor_position` (`bool`):
     Whether to store the cursor-position inside the parent-session or not.
 - `cursor_rendering` (`wi_cursor_rendering`):
     An enum (`INVISIBLE`, `LINEBASED`, `POINTBASED`) that tells how to render
     the cursor inside this window.
 - `depending_windows` (`wi_window**`):
-    An array with windows, will be used to update the right windows later, not
+    An array with windows, will be used to redraw the right windows later, not
     in use yet.
 - `depends_on` (`wi_window*`):
     A pointer to the window this window depends on.
