@@ -1,5 +1,6 @@
 #include <stdatomic.h>	/* atomic_store() */
 #include <string.h>		/* strlen() */
+#include <threads.h>	/* thrd_sleep() */
 #include <unistd.h>		/* read(), ICANON, ECHO, ... */
 #include <termios.h>	/* tcgetattr(), tcsetattr() */
 #include <fcntl.h>		/* fcntl(), F_GETFLS, O_NONBLOCK */
@@ -333,21 +334,32 @@ int input_function(void* arg) {
 
 	while (atomic_load(&(session->keep_running))) {
 		c = wi_get_char();
-		bool alt_mod = false;
+		if (c > 0) {
+			bool alt_mod = false;
 
-		if (c == 27) {
-			c = wi_get_char();
-			alt_mod = true;
-		}
+			if (c == 27) {
+				c = wi_get_char();
+				alt_mod = true;
+			}
 
 
-		for (int i = 0; i < amount_maps; i++) {
-			if (alt_mod && key_maps[i].modifier == ALT && key_maps[i].key == c) {
-				key_maps[i].callback(c, session);
-			} else if (c == convert_key(key_maps[i])) {
-				key_maps[i].callback(c, session);
+			for (int i = 0; i < amount_maps; i++) {
+				if (
+					alt_mod && key_maps[i].modifier == ALT
+					&& key_maps[i].key == c
+				) {
+					key_maps[i].callback(c, session);
+				} else if (c == convert_key(key_maps[i])) {
+					key_maps[i].callback(c, session);
+				}
 			}
 		}
+
+		/* Sleep for 10ms */
+		thrd_sleep(
+			&(struct timespec) { .tv_sec = 0, .tv_nsec = 1e7 },
+			NULL /* No need to catch remaining time on interrupt */
+		);
 	}
 
 	restore_terminal();
