@@ -468,6 +468,10 @@ int wi_render_frame(wi_session* session) {
 
 wi_content* wi_get_current_window_content(const wi_window* window) {
 	if (window->depends_on == NULL) {
+		wiAssert(
+			window->contents != NULL,
+			"contents can not be NULL for non-depending window"
+		);
 		return window->contents[0][0];
 	}
 	wi_window* dep = window->depends_on;
@@ -490,6 +494,11 @@ wi_content* wi_get_current_window_content(const wi_window* window) {
 	while (row > 0 && window->contents[row][col] == NULL) {
 		row--;
 	}
+
+	wiAssert(
+		window->contents[row][col] != NULL,
+		"Could not find non-NULL content for a depending window"
+	);
 
 	return window->contents[row][col];
 }
