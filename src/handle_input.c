@@ -166,7 +166,6 @@ void wi_scroll_left(const char _, wi_session* session) {
 	/* Some aliasses for these loooong names */
 	int* visual_col = &focussed_window->internal.visual_cursor_position.col;
 	int* offset_c_col = &focussed_window->internal.content_offset_chars.col;
-	int* offset_b_col = &focussed_window->internal.content_offset_bytes.col;
 
 	const bool cursor_linebased = focussed_window->cursor_rendering == LINEBASED;
 
@@ -175,13 +174,9 @@ void wi_scroll_left(const char _, wi_session* session) {
 		focussed_window->internal.content_offset_chars.row
 		+ focussed_window->internal.visual_cursor_position.row;
 	const int line_length_c = content->line_lengths_chars[current_line];
-	const int line_length_b = content->line_lengths_bytes[current_line];
 
 	if (*offset_c_col >= line_length_c) {
 		*offset_c_col = line_length_c - 1;
-		/* Move to actual start of codepoint instead of byte in the middle */
-		*offset_b_col = line_length_b - 1;
-		skip_continuation_bytes_left(offset_b_col, content->lines[current_line]);
 		*visual_col = 0;
 		atomic_store(&(session->need_rerender), true);
 	} else if (*offset_c_col + *visual_col >= line_length_c) {
@@ -196,9 +191,6 @@ void wi_scroll_left(const char _, wi_session* session) {
 	} else if (*offset_c_col > 0) {
 		/* Move to actual start of codepoint instead of byte in the middle */
 		(*offset_c_col)--;
-		(*offset_b_col)--;
-		skip_continuation_bytes_left(offset_b_col, content->lines[current_line]);
-
 		atomic_store(&(session->need_rerender), true);
 	}
 }
@@ -215,7 +207,6 @@ void wi_scroll_right(const char _, wi_session* session) {
 	/* Aliasses for these loooooooong names */
 	int* visual_col = &focussed_window->internal.visual_cursor_position.col;
 	int* offset_c_col = &focussed_window->internal.content_offset_chars.col;
-	int* offset_b_col = &focussed_window->internal.content_offset_bytes.col;
 
 	const int fw_width = focussed_window->internal.rendered_width;
 
@@ -225,22 +216,17 @@ void wi_scroll_right(const char _, wi_session* session) {
 		+ focussed_window->internal.visual_cursor_position.row;
 
     const int line_length_c = content->line_lengths_chars[current_line];
-    const int line_length_b = content->line_lengths_bytes[current_line];
 
 	const bool cursor_linebased = focussed_window->cursor_rendering == LINEBASED;
 
 	if (*offset_c_col >= line_length_c) {
 		*offset_c_col = line_length_c - 1;
-		/* Move to actual start of codepoint instead of byte in the middle */
-		*offset_b_col = line_length_b - 1;
-		skip_continuation_bytes_left(offset_b_col, content->lines[current_line]);
 		*visual_col = 0;
 		atomic_store(&(session->need_rerender), true);
 	} else if (*offset_c_col + *visual_col >= line_length_c) {
 		*visual_col = line_length_c - *offset_c_col - 1;
 		atomic_store(&(session->need_rerender), true);
 	}
-
 
 	if (
 		!cursor_linebased
@@ -251,12 +237,6 @@ void wi_scroll_right(const char _, wi_session* session) {
 		atomic_store(&(session->need_rerender), true);
 	} else if (*offset_c_col + fw_width < line_length_c) {
 		(*offset_c_col)++;
-		(*offset_b_col)++;
-		skip_continuation_bytes_right(
-			offset_b_col,
-			content->lines[current_line],
-			content->line_lengths_bytes[current_line]
-		);
 		atomic_store(&(session->need_rerender), true);
 	}
 }
