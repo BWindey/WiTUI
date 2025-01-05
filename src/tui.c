@@ -41,7 +41,6 @@ wi_window* wi_make_window(void) {
 	window->internal.amount_depending = 0;
 
 	window->internal.content_offset_chars = (wi_position) { 0, 0 };
-	window->internal.content_offset_bytes = (wi_position) { 0, 0 };
 	window->internal.visual_cursor_position = (wi_position) { 0, 0 };
 	window->internal.currently_focussed = false;
 
