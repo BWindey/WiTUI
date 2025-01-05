@@ -1,76 +1,13 @@
-#include "wi_tui.h"		/* declarations */
 #include "wiAssert.h"	/* wiAssert() */
+#include "wi_data.h"
+#include "wi_internals.h"
+#include "wi_functions.h"
 
 #include <stdatomic.h>  /* atomic_store */
 #include <stdbool.h>	/* true, false */
 #include <stddef.h>		/* size_t */
 #include <stdlib.h>		/* malloc(), realloc(), free() */
 #include <string.h>		/* strdup(), strchr(), strlen() */
-
-
-static wi_content* split_lines(char* content) {
-	int internal_amount_lines = 10;
-	int amount_lines = 0;
-	char** lines = (char**) malloc(internal_amount_lines * sizeof(char*));
-	size_t* line_lengths = (size_t*) malloc(internal_amount_lines * sizeof(size_t));
-
-	char* newline = strchr(content, '\n');
-	while (newline != NULL) {
-		if (amount_lines == internal_amount_lines) {
-			internal_amount_lines += 10;
-			lines = (char**) realloc(lines, internal_amount_lines * sizeof(char*));
-			line_lengths =
-				(size_t*) realloc(line_lengths, internal_amount_lines * sizeof(size_t));
-		}
-
-		int length = newline - content;
-		/* If empty line ('\n\n'), then put a single " " so the cursor stays
-		 * visible */
-		if (length == 0) {
-			lines[amount_lines] = (char*) malloc(2 * sizeof(char));
-			strcpy(lines[amount_lines], " ");
-			line_lengths[amount_lines] = 1;
-		} else {
-			lines[amount_lines] = (char*) malloc((length + 1) * sizeof(char));
-			memcpy(lines[amount_lines], content, length);
-			lines[amount_lines][length] = '\0';
-			line_lengths[amount_lines] = length;
-		}
-
-		content += length + 1;
-		amount_lines++;
-
-		newline = strchr(content, '\n');
-	}
-
-	/* Last line in content can be not delimited by '\n' */
-	if (newline == NULL && *content != '\0') {
-		if (amount_lines == internal_amount_lines) {
-			internal_amount_lines += 1;
-			lines = (char**) realloc(lines, internal_amount_lines * sizeof(char*));
-			line_lengths =
-				(size_t*) realloc(lines, internal_amount_lines * sizeof(size_t));
-		}
-
-		int length = strlen(content);
-		lines[amount_lines] = (char*) malloc((length + 1) * sizeof(char));
-		memcpy(lines[amount_lines], content, length);
-		lines[amount_lines][length] = '\0';
-		line_lengths[amount_lines] = length;
-
-		amount_lines++;
-	}
-
-	wi_content* split_contents = (wi_content*) malloc(sizeof(wi_content));
-	*split_contents = (wi_content){
-		.lines = lines,
-		.line_lengths = line_lengths,
-		.amount_lines = amount_lines,
-		.internal_amount_lines = internal_amount_lines
-	};
-
-	return split_contents;
-}
 
 wi_window* wi_make_window(void) {
 	wi_window* window = (wi_window*) malloc(sizeof(wi_window));
@@ -272,6 +209,7 @@ void wi_free_content(wi_content* content) {
 		free(content->lines[i]);
 	}
 	free(content->lines);
-	free(content->line_lengths);
+	free(content->line_lengths_bytes);
+	free(content->line_lengths_chars);
 	free(content);
 }

@@ -1,13 +1,12 @@
 #include <stdatomic.h>	/* atomic_store() */
-#include <string.h>		/* strlen() */
 #include <threads.h>	/* thrd_sleep() */
 #include <unistd.h>		/* read(), ICANON, ECHO, ... */
 #include <termios.h>	/* tcgetattr(), tcsetattr() */
 #include <fcntl.h>		/* fcntl(), F_GETFLS, O_NONBLOCK */
 #include <errno.h>		/* errno, EAGAIN, EWOULDBLOCK */
 
-#include "wi_tui.h"
 #include "wiAssert.h"
+#include "wi_functions.h"
 #include "wi_internals.h"
 
 #define WI_UNUSED(x) (void)(x)
@@ -113,36 +112,6 @@ char convert_key(wi_keymap keymap) {
  * actually scroll the text).
  */
 
-/*
- * GOAL: make it so render_window_content can rely on cursor being on valid
- * position (so '\0' as last one possible)
- */
-void sanitize_window_cursor_positions(wi_window* window) {
-	const int visual_row = window->internal.visual_cursor_position.row;
-	const int visual_col = window->internal.visual_cursor_position.col;
-	const int offset_row = window->internal.content_render_offset.row;
-	const int offset_col = window->internal.content_render_offset.col;
-
-	const wi_content* content = wi_get_current_window_content(window);
-	const int row_in_content = offset_row + visual_row;
-
-	const int current_line_length = row_in_content < content->amount_lines
-		? content->line_lengths[row_in_content] : 0;
-	const int window_width = window->internal.rendered_width;
-
-	if (visual_col >= current_line_length) {
-		window->internal.visual_cursor_position.col = current_line_length - 1;
-	}
-	if (offset_col + window_width >= current_line_length) {
-		if (current_line_length - window_width - 1 < 0) {
-			window->internal.content_render_offset.col = 0;
-		} else {
-			window->internal.content_render_offset.col =
-				current_line_length - window_width - 1;
-		}
-	}
-}
-
 void wi_scroll_up(const char _, wi_session* session) {
 	WI_UNUSED(_);
 	wi_window* focussed_window =
@@ -154,7 +123,6 @@ void wi_scroll_up(const char _, wi_session* session) {
 		focussed_window->internal.content_render_offset.row--;
 		atomic_store(&(session->need_rerender), true);
 	}
-	sanitize_window_cursor_positions(focussed_window);
 }
 
 void wi_scroll_down(const char _, wi_session* session) {
@@ -180,7 +148,6 @@ void wi_scroll_down(const char _, wi_session* session) {
 		focussed_window->internal.content_render_offset.row++;
 		atomic_store(&(session->need_rerender), true);
 	}
-	sanitize_window_cursor_positions(focussed_window);
 }
 
 void wi_scroll_left(const char _, wi_session* session) {
@@ -194,7 +161,7 @@ void wi_scroll_left(const char _, wi_session* session) {
 
 	const int fw_visual_col =
 		focussed_window->internal.visual_cursor_position.col;
-	const int fw_offset_col =
+	int fw_offset_col =
 		focussed_window->internal.content_render_offset.col;
 	const bool cursor_linebased = focussed_window->cursor_rendering == LINEBASED;
 
@@ -202,7 +169,20 @@ void wi_scroll_left(const char _, wi_session* session) {
 		focussed_window->internal.visual_cursor_position.col--;
 		atomic_store(&(session->need_rerender), true);
 	} else if (fw_offset_col > 0) {
-		focussed_window->internal.content_render_offset.col--;
+		const wi_content* content = wi_get_current_window_content(focussed_window);
+		const int current_line =
+			focussed_window->internal.content_render_offset.row
+			+ focussed_window->internal.visual_cursor_position.row;
+
+		/* Move to actual start of codepoint instead of byte in the middle */
+		while (
+			fw_offset_col > 0
+			&& (content->lines[current_line][fw_offset_col] & 0x8) != 0x0
+		) {
+			fw_offset_col--;
+		}
+
+		focussed_window->internal.content_render_offset.col = fw_offset_col;
 		atomic_store(&(session->need_rerender), true);
 	}
 }
@@ -228,7 +208,7 @@ void wi_scroll_right(const char _, wi_session* session) {
 		focussed_window->internal.content_render_offset.row
 		+ focussed_window->internal.visual_cursor_position.row;
 
-    const int fw_content_line_length = strlen(content->lines[current_line]);
+    const int fw_content_line_length = content->line_lengths_chars[current_line];
 
 	const bool cursor_linebased = focussed_window->cursor_rendering == LINEBASED;
 
@@ -240,7 +220,8 @@ void wi_scroll_right(const char _, wi_session* session) {
 		focussed_window->internal.visual_cursor_position.col++;
 		atomic_store(&(session->need_rerender), true);
 	} else if (fw_offset_col + fw_width < fw_content_line_length) {
-		focussed_window->internal.content_render_offset.col++;
+		int codepoint_length = utf8_byte_size(content->lines[current_line][fw_offset_col]);
+		focussed_window->internal.content_render_offset.col += codepoint_length;
 		atomic_store(&(session->need_rerender), true);
 	}
 }
