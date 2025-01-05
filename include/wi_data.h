@@ -137,8 +137,8 @@ struct wi_keymap {
 };
 
 struct wi_position {
-	short row;
-	short col;
+	int row;
+	int col;
 };
 
 struct wi_result {
@@ -196,7 +196,8 @@ struct wi_window {
 		/* (HEAP) */
 		wi_window** depending_windows;
 
-		wi_position content_render_offset;
+		wi_position content_offset_chars;
+		wi_position content_offset_bytes;
 		wi_position visual_cursor_position;
 
 		bool currently_focussed;
