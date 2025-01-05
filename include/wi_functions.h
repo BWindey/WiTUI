@@ -66,6 +66,19 @@ wi_session* wi_make_session(void);
 wi_session* wi_add_window_to_session(wi_session*, wi_window*, int row);
 
 /*
+ * This function adds the 'depending' window as "dependency" to the 'parent'
+ * window. This ensures that the 'depending' window will look to the cursor
+ * position inside the 'parent' window to decide which content to show.
+ *
+ * When 'depending' already depended on another 'parent', that will be
+ * overwritten with the new 'parent'.
+ *
+ * When 'depending' already was added as a "dependency" to the 'parent',
+ * it will be twice in the 'parent'.depending list, making drawing a bit slower.
+ */
+void wi_bind_dependency(wi_window* parent, wi_window* depending);
+
+/*
  * Add content-string to an existing window at the given position.
  * If position.row > window.amount_rows, then the NULL-contents will be placed
  * between empty rows (same for columns).

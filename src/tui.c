@@ -176,6 +176,23 @@ wi_window* wi_add_content_to_window(
 	return window;
 }
 
+void wi_bind_dependency(wi_window* parent, wi_window* depending) {
+	depending->depends_on = parent;
+
+	/* Grow array by one and add */
+	parent->internal.amount_depending++;
+	parent->internal.depending_windows = realloc(
+		parent->internal.depending_windows,
+		parent->internal.amount_depending
+	);
+	wiAssert(
+		parent->internal.depending_windows != NULL,
+		"Failed to grow array when adding depending window"
+	);
+	parent->internal.depending_windows[parent->internal.amount_depending - 1] =
+		depending;
+}
+
 void wi_free_session(wi_session* session) {
 	/* Free all the windows... Yay */
 	for (int i = 0; i < session->internal.amount_rows; i++) {
