@@ -114,12 +114,14 @@ bool calculate_window_dimension(wi_session* session) {
 				windows_to_compute[amount_to_compute] = window;
 				amount_to_compute++;
 			} else {
-				/* +2 because border */
 				window->internal.rendered_width = window->width;
 				occupied_width += session->windows[row][col]->width;
 
-				if (window->border.corner_bottom_left != NULL) {
-					occupied_width += 2;
+				if (window->border.side_left != NULL) {
+					occupied_width++;
+				}
+				if (window->border.side_right != NULL) {
+					occupied_width++;
 				}
 			}
 			window->internal.rendered_height = window->height;
@@ -139,8 +141,11 @@ bool calculate_window_dimension(wi_session* session) {
 			/* -2 because border */
 			wi_window* window = windows_to_compute[col];
 			window->internal.rendered_width = distributed_width;
-			if (window->border.corner_bottom_left != NULL) {
-				window->internal.rendered_width -= 2;
+			if (window->border.side_left != NULL) {
+				window->internal.rendered_width--;
+			}
+			if (window->border.side_right != NULL) {
+				window->internal.rendered_width--;
 			}
 
 			/* Distribute left-over among the first windows, to fill screen */
@@ -174,6 +179,9 @@ int characters_until_wrap(char* content_pointer, int width) {
 }
 
 static inline void print_side_border(const char* border, const char* effect) {
+	if (border == NULL) {
+		border = "";
+	}
 	printf("\033[0m%s%s\033[0m", effect, border);
 }
 
@@ -395,7 +403,7 @@ void render_window(const wi_window* window, const int horizontal_offset) {
 	const wi_border border = window->border;
 	char* effect = "";
 
-	if (border.corner_bottom_left != NULL) {
+	if (border.side_top != NULL) {
 		if (window->internal.currently_focussed) {
 			effect = border.focussed_colour;
 		} else {
@@ -413,7 +421,7 @@ void render_window(const wi_window* window, const int horizontal_offset) {
 
 	render_content(window, horizontal_offset);
 
-	if (border.corner_bottom_left != NULL) {
+	if (border.side_bottom != NULL) {
 		cursor_move_right(horizontal_offset);
 		printf("%s", effect);
 		render_horizontal_border(
