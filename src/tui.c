@@ -183,7 +183,7 @@ void wi_bind_dependency(wi_window* parent, wi_window* depending) {
 	parent->internal.amount_depending++;
 	parent->internal.depending_windows = realloc(
 		parent->internal.depending_windows,
-		parent->internal.amount_depending
+		parent->internal.amount_depending * sizeof(wi_window*)
 	);
 	wiAssert(
 		parent->internal.depending_windows != NULL,
