@@ -188,9 +188,18 @@ void render_content_no_wrap(const wi_window* window, const int horizontal_offset
 
 	/* Cursor variables */
 	wi_position cursor = window->internal.visual_cursor_position;
-	bool do_line_cursor = window->internal.currently_focussed
+	bool focus_in_depending_window = false;
+	for (int i = 0; i < window->internal.amount_depending; i++) {
+		if (window->internal.depending_windows[i]->internal.currently_focussed) {
+			focus_in_depending_window = true;
+			break;
+		}
+	}
+	bool do_line_cursor =
+		(window->internal.currently_focussed || focus_in_depending_window)
 		&& window->cursor_rendering == LINEBASED;
-	bool do_point_cursor = window->internal.currently_focussed
+	bool do_point_cursor =
+		(window->internal.currently_focussed || focus_in_depending_window)
 		&& window->cursor_rendering == POINTBASED;
 
 	const int starting_row = window->internal.content_offset_chars.row;
