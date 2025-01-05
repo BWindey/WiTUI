@@ -119,8 +119,8 @@ void wi_scroll_up(const char _, wi_session* session) {
 	if (focussed_window->internal.visual_cursor_position.row > 0) {
 		focussed_window->internal.visual_cursor_position.row--;
 		atomic_store(&(session->need_rerender), true);
-	} else if (focussed_window->internal.content_render_offset.row > 0) {
-		focussed_window->internal.content_render_offset.row--;
+	} else if (focussed_window->internal.content_offset_chars.row > 0) {
+		focussed_window->internal.content_offset_chars.row--;
 		atomic_store(&(session->need_rerender), true);
 	}
 }
@@ -129,23 +129,25 @@ void wi_scroll_down(const char _, wi_session* session) {
 	WI_UNUSED(_);
 	wi_window* focussed_window =
 		session->windows[session->focus_pos.row][session->focus_pos.col];
-	int fw_visual_row = focussed_window->internal.visual_cursor_position.row;
-	int fw_offset_row = focussed_window->internal.content_render_offset.row;
 
-	int fw_height = focussed_window->internal.rendered_height;
-	int fw_amount_content_lines =
+	/* Aliasses for these loooooong names */
+	int* visual_row = &focussed_window->internal.visual_cursor_position.row;
+	int* offset_row = &focussed_window->internal.content_offset_chars.row;
+
+	const int fw_height = focussed_window->internal.rendered_height;
+	const int fw_amount_content_lines =
 		wi_get_current_window_content(focussed_window)->amount_lines;
 
 	/* Don't scroll further then the text */
-	if (fw_visual_row + fw_offset_row + 1 >= fw_amount_content_lines) {
+	if (*visual_row + *offset_row + 1 >= fw_amount_content_lines) {
 		return;
 	}
 
-	if (fw_visual_row + 1 < fw_height) {
-		focussed_window->internal.visual_cursor_position.row++;
+	if (*visual_row + 1 < fw_height) {
+		(*visual_row)++;
 		atomic_store(&(session->need_rerender), true);
-	} else if (fw_offset_row + fw_height < fw_amount_content_lines) {
-		focussed_window->internal.content_render_offset.row++;
+	} else if (*offset_row + fw_height < fw_amount_content_lines) {
+		(*offset_row)++;
 		atomic_store(&(session->need_rerender), true);
 	}
 }
@@ -155,34 +157,48 @@ void wi_scroll_left(const char _, wi_session* session) {
 	wi_window* focussed_window =
 		session->windows[session->focus_pos.row][session->focus_pos.col];
 
-	if (focussed_window->wrap_text && focussed_window->cursor_rendering == LINEBASED) {
+	if (
+		focussed_window->wrap_text
+		&& focussed_window->cursor_rendering == LINEBASED) {
 		return;
 	}
 
-	const int fw_visual_col =
-		focussed_window->internal.visual_cursor_position.col;
-	int fw_offset_col =
-		focussed_window->internal.content_render_offset.col;
+	/* Some aliasses for these loooong names */
+	int* visual_col = &focussed_window->internal.visual_cursor_position.col;
+	int* offset_c_col = &focussed_window->internal.content_offset_chars.col;
+	int* offset_b_col = &focussed_window->internal.content_offset_bytes.col;
+
 	const bool cursor_linebased = focussed_window->cursor_rendering == LINEBASED;
 
-	if (!cursor_linebased && fw_visual_col > 0) {
-		focussed_window->internal.visual_cursor_position.col--;
-		atomic_store(&(session->need_rerender), true);
-	} else if (fw_offset_col > 0) {
-		const wi_content* content = wi_get_current_window_content(focussed_window);
-		const int current_line =
-			focussed_window->internal.content_render_offset.row
-			+ focussed_window->internal.visual_cursor_position.row;
+	const wi_content* content = wi_get_current_window_content(focussed_window);
+	const int current_line =
+		focussed_window->internal.content_offset_chars.row
+		+ focussed_window->internal.visual_cursor_position.row;
+	const int line_length_c = content->line_lengths_chars[current_line];
+	const int line_length_b = content->line_lengths_bytes[current_line];
 
+	if (*offset_c_col >= line_length_c) {
+		*offset_c_col = line_length_c - 1;
 		/* Move to actual start of codepoint instead of byte in the middle */
-		while (
-			fw_offset_col > 0
-			&& (content->lines[current_line][fw_offset_col] & 0x8) != 0x0
-		) {
-			fw_offset_col--;
-		}
+		*offset_b_col = line_length_b - 1;
+		skip_continuation_bytes_left(offset_b_col, content->lines[current_line]);
+		*visual_col = 0;
+		atomic_store(&(session->need_rerender), true);
+	} else if (*offset_c_col + *visual_col >= line_length_c) {
+		*visual_col = line_length_c - *offset_c_col - 1;
+		atomic_store(&(session->need_rerender), true);
+	}
 
-		focussed_window->internal.content_render_offset.col = fw_offset_col;
+
+	if (!cursor_linebased && *visual_col > 0) {
+		(*visual_col)--;
+		atomic_store(&(session->need_rerender), true);
+	} else if (*offset_c_col > 0) {
+		/* Move to actual start of codepoint instead of byte in the middle */
+		(*offset_c_col)--;
+		(*offset_b_col)--;
+		skip_continuation_bytes_left(offset_b_col, content->lines[current_line]);
+
 		atomic_store(&(session->need_rerender), true);
 	}
 }
@@ -196,32 +212,51 @@ void wi_scroll_right(const char _, wi_session* session) {
 		return;
 	}
 
-	const int fw_visual_col =
-		focussed_window->internal.visual_cursor_position.col;
-	const int fw_offset_col =
-		focussed_window->internal.content_render_offset.col;
+	/* Aliasses for these loooooooong names */
+	int* visual_col = &focussed_window->internal.visual_cursor_position.col;
+	int* offset_c_col = &focussed_window->internal.content_offset_chars.col;
+	int* offset_b_col = &focussed_window->internal.content_offset_bytes.col;
 
 	const int fw_width = focussed_window->internal.rendered_width;
 
     const wi_content* content = wi_get_current_window_content(focussed_window);
     const int current_line =
-		focussed_window->internal.content_render_offset.row
+		focussed_window->internal.content_offset_chars.row
 		+ focussed_window->internal.visual_cursor_position.row;
 
-    const int fw_content_line_length = content->line_lengths_chars[current_line];
+    const int line_length_c = content->line_lengths_chars[current_line];
+    const int line_length_b = content->line_lengths_bytes[current_line];
 
 	const bool cursor_linebased = focussed_window->cursor_rendering == LINEBASED;
 
+	if (*offset_c_col >= line_length_c) {
+		*offset_c_col = line_length_c - 1;
+		/* Move to actual start of codepoint instead of byte in the middle */
+		*offset_b_col = line_length_b - 1;
+		skip_continuation_bytes_left(offset_b_col, content->lines[current_line]);
+		*visual_col = 0;
+		atomic_store(&(session->need_rerender), true);
+	} else if (*offset_c_col + *visual_col >= line_length_c) {
+		*visual_col = line_length_c - *offset_c_col - 1;
+		atomic_store(&(session->need_rerender), true);
+	}
+
+
 	if (
 		!cursor_linebased
-		&& fw_visual_col + 1 < fw_width
-		&& fw_visual_col + fw_offset_col + 1 < fw_content_line_length
+		&& *visual_col + 1 < fw_width
+		&& *visual_col + *offset_c_col + 1 < line_length_c
 	) {
-		focussed_window->internal.visual_cursor_position.col++;
+		(*visual_col)++;
 		atomic_store(&(session->need_rerender), true);
-	} else if (fw_offset_col + fw_width < fw_content_line_length) {
-		int codepoint_length = utf8_byte_size(content->lines[current_line][fw_offset_col]);
-		focussed_window->internal.content_render_offset.col += codepoint_length;
+	} else if (*offset_c_col + fw_width < line_length_c) {
+		(*offset_c_col)++;
+		(*offset_b_col)++;
+		skip_continuation_bytes_right(
+			offset_b_col,
+			content->lines[current_line],
+			content->line_lengths_bytes[current_line]
+		);
 		atomic_store(&(session->need_rerender), true);
 	}
 }
