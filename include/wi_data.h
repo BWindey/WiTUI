@@ -121,8 +121,10 @@ struct wi_border {
 struct wi_content {
 	/* (HEAP) */
 	char** lines;
-	/* (HEAP) Lengths excluding '\0' */
-	size_t* line_lengths;
+	/* (HEAP) Lengths excluding '\0', in bytes. */
+	unsigned int* line_lengths_chars;
+	/* (HEAP) Lengths excluding '\0', in bytes. */
+	unsigned int* line_lengths_bytes;
 
 	int amount_lines;
 	int internal_amount_lines;
