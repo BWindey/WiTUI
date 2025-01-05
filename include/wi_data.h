@@ -121,7 +121,7 @@ struct wi_border {
 struct wi_content {
 	/* (HEAP) */
 	char** lines;
-	/* (HEAP) Lengths excluding '\0', in bytes. */
+	/* (HEAP) Lengths excluding '\0', in visual 1-wide characters. */
 	unsigned int* line_lengths_chars;
 	/* (HEAP) Lengths excluding '\0', in bytes. */
 	unsigned int* line_lengths_bytes;
@@ -197,7 +197,6 @@ struct wi_window {
 		wi_window** depending_windows;
 
 		wi_position content_offset_chars;
-		wi_position content_offset_bytes;
 		wi_position visual_cursor_position;
 
 		bool currently_focussed;
