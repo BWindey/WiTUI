@@ -12,4 +12,9 @@ int render_function(void* args);
 unsigned short utf8_byte_size(char);
 wi_content* split_lines(const char*);
 
+/* Decrement index-pointer when on continuation byte until not anymore */
+void skip_continuation_bytes_left(int*, const char*);
+/* Increment index-pointer when on continuation byte until not anymore */
+void skip_continuation_bytes_right(int*, const char*, const int max);
+
 #endif	/* !WI_INTERNALS_HEADER_GUARD */

@@ -93,3 +93,15 @@ wi_content* split_lines(const char* content) {
 
 	return split_contents;
 }
+
+void skip_continuation_bytes_left(int* p, const char* c) {
+	while (*p > 0 && (c[*p] & 0xC0) == 0x80) {
+		(*p)--;
+	}
+}
+
+void skip_continuation_bytes_right(int* p, const char* c, const int max) {
+	while (*p < max && (c[*p] & 0xC0) == 0x80) {
+		(*p)++;
+	}
+}
