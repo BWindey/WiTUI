@@ -15,7 +15,7 @@ int main(void) {
 	wi_add_content_to_window(
 		window_table,
 		"Destination        \u2502 Departs    \u2502 Platform\n"
-		"------------------------------------------\n"
+		"\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\u2501\n"
 		"Antwerp-Central    \u2502 09:16      \u2502 5\n"
 		"Bruges             \u2502 09:27      \u2502 6\n"
 		"Ghent              \u2502 09:41      \u2502 1\n"
@@ -43,4 +43,5 @@ int main(void) {
 	);
 
 	wi_show_session(session);
+	wi_free_session(session);
 }
