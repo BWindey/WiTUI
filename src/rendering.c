@@ -1,19 +1,18 @@
 #include <signal.h>		/* struct sigaction, sigaction, SIGINT */
 #include <stdatomic.h>	/* atomic_bool */
 #include <stdbool.h>	/* true, false */
-#include <stddef.h>
 #include <stdio.h>		/* printf() */
 #include <string.h>		/* strlen() */
 #include <sys/ioctl.h>	/* ioctl() */
 #include <threads.h>	/* thrd_t, thrd_create, thrd_join */
 
 #include "wiAssert.h" 	/* wiAssert() */
+
 #include "wi_internals.h"	/* input_function() */
+#include "wi_data.h"
 
-/* This file implements wi_render_frame, wi_show_session from wiTUI.h */
-#include "wi_tui.h"
-
-#include <time.h>
+/* This file implements wi_render_frame, wi_show_session from wi_functions.h */
+#include "wi_functions.h"
 
 typedef struct terminal_size {
 	int rows;
@@ -169,88 +168,148 @@ bool calculate_window_dimension(wi_session* session) {
  */
 int characters_until_wrap(char* content_pointer, int width) {
 	int wrap = 0;
-	char c;
-
-	for (int i = 0; i < width; i++) {
-		c = content_pointer[i];
-		if (c == '\0' || c == '\n') {
-			wrap = i;
-			return wrap;
-		} else if (c == ' ' || c == '-') {
-			if (i + 1 < width) {
-				wrap = i + 1;
-			} else {
-				wrap = i;
-			}
-		}
-	}
-
-	if (wrap == 0) {
-		return width;
-	}
-
+	/* TODO: */
+	wrap = width;
 	return wrap;
 }
 
 static inline void print_side_border(const char* border, const char* effect) {
-	printf("%s%s\033[0m", effect, border);
+	printf("\033[0m%s%s\033[0m", effect, border);
 }
 
-void render_window_content(const wi_window* window, const int horizontal_offset) {
+void render_content_no_wrap(const wi_window* window, const int horizontal_offset) {
+	/* Extract the needed variables */
+	const wi_content* content = wi_get_current_window_content(window);
+	const int window_width    = window->internal.rendered_width;
+	const int window_height   = window->internal.rendered_height;
+	const wi_border border    = window->border;
+	const char* effect = window->internal.currently_focussed
+		? border.focussed_colour : border.unfocussed_colour;
+
+	/* Cursor variables */
+	wi_position cursor = window->internal.visual_cursor_position;
+	bool do_line_cursor = window->internal.currently_focussed
+		&& window->cursor_rendering == LINEBASED;
+	bool do_point_cursor = window->internal.currently_focussed
+		&& window->cursor_rendering == POINTBASED;
+
+	const int starting_row = window->internal.content_offset_chars.row;
+	int char_offset = window->internal.content_offset_chars.col;
+
+	int cursor_line_length =
+		content->line_lengths_chars[cursor.row + starting_row];
+
+	/* Make sure that the cursor is on the content. */
+	if (char_offset >= cursor_line_length) {
+		char_offset = cursor_line_length - 1;
+	}
+	if (char_offset + cursor.col >= cursor_line_length) {
+		cursor.col = cursor_line_length - char_offset - 1;
+	}
+
+
+	/* Variables to keep track of where I am */
+	int printed_rows  = 0;
+	int skipped_chars;
+	int printed_chars;
+	int current_byte;
+	int current_line_length; /* In visual characters */
+	char* current_line;
+
+	/* Print lines with content */
+	while (
+		printed_rows < window_height
+		&& printed_rows + starting_row < content->amount_lines
+	) {
+		cursor_move_right(horizontal_offset);
+		print_side_border(window->border.side_left, effect);
+
+		skipped_chars = 0;
+		printed_chars = 0;
+		current_byte  = 0;
+		current_line  = content->lines[printed_rows + starting_row];
+		current_line_length =
+			content->line_lengths_chars[printed_rows + starting_row];
+
+		/* Skip first 'char_offset' characters, but do print the ansii escape
+		 * codes for text markup */
+		while (skipped_chars < char_offset) {
+			code_lengths char_length = char_byte_size(current_line + current_byte);
+			if (current_line[current_byte] == '\033') {
+				printf("%.*s", char_length.bytes, current_line + current_byte);
+			}
+			current_byte += char_length.bytes;
+			skipped_chars += char_length.width;
+		}
+
+		/* Line cursor */
+		bool line_cursor = printed_rows == cursor.row && do_line_cursor;
+		if (line_cursor) {
+			printf("\033[7m");
+		}
+
+		/* Print out the content */
+		while (
+			printed_chars < window_width
+			&& printed_chars + skipped_chars < current_line_length
+		) {
+			/* Block cursor */
+			bool point_cursor =
+				printed_rows == cursor.row && printed_chars == cursor.col
+				&& do_point_cursor;
+			if (point_cursor) {
+				printf("\033[7m");
+			}
+
+			code_lengths char_length =
+				char_byte_size(current_line + current_byte);
+			printf("%.*s", char_length.bytes, current_line + current_byte);
+			current_byte += char_length.bytes;
+			printed_chars += char_length.width;
+
+			/* Block cursor */
+			if (point_cursor) {
+				printf("\033[27m"); /* Only stop cursor-effect, not the rest */
+			}
+		}
+
+		/* Fill the rest of the line with emptiness */
+		/* Some benchmarking showed that this was a bit faster then a loop */
+		if (printed_chars < window_width) {
+			printf("%*c", window_width - printed_chars, ' ');
+		}
+
+		/* No need to stop line-cursor effect, because when rendering the
+		 * border, all effects are already reset. */
+
+		print_side_border(window->border.side_right, effect);
+		putchar('\n');
+		printed_rows++;
+	}
+
+	/* Fill remaining height with emptiness */
+	while (printed_rows < window_height) {
+		cursor_move_right(horizontal_offset);
+		print_side_border(window->border.side_left, effect);
+		printf("%*c", window_width, ' ');
+		print_side_border(window->border.side_right, effect);
+		putchar('\n');
+
+		printed_rows++;
+	}
+}
+
+void render_content(const wi_window* window, const int horizontal_offset) {
 	const int window_width = window->internal.rendered_width;
 	const int window_height = window->internal.rendered_height;
-
-	const wi_content* content = wi_get_current_window_content(window);
-	const wi_position render_offset = window->internal.content_render_offset;
-	const wi_position visual_cursor_pos = window->internal.visual_cursor_position;
-	const wi_cursor_rendering cursor_rendering = window->cursor_rendering;
 
 	const wi_border border = window->border;
 	const char* effect = window->internal.currently_focussed ?
 		border.focussed_colour : border.unfocussed_colour;
 
-	const bool do_line_render = window->internal.currently_focussed
-		&& cursor_rendering == LINEBASED;
-	const bool do_point_render = window->internal.currently_focussed
-		&& cursor_rendering == POINTBASED;
-
 	if (window->wrap_text) {
-		int render_row = render_offset.row;
-		int row = render_row;
+		/* TODO: wrapping */
 		int rendered_lines = 0;
-
-		while (rendered_lines < window_height && row < content->amount_lines) {
-			size_t line_length = content->line_lengths[row];
-			size_t j = 0;
-
-			while (j < line_length && rendered_lines < window_height) {
-				cursor_move_right(horizontal_offset);
-				print_side_border(border.side_left, effect);
-
-				/* Calculate how many characters can fit in the current line */
-				int chars_til_wrap = characters_until_wrap(
-					&content->lines[row][j], window_width
-				);
-				int k = 0;
-
-				while (k < chars_til_wrap) {
-					printf("%c", content->lines[row][j]);
-					k++;
-					j++;
-				}
-				while (k < window_width) {
-					printf(" ");
-					k++;
-				}
-
-				print_side_border(border.side_right, effect);
-				printf("\n");
-
-				rendered_lines++;
-			}
-
-			row++;
-		}
 		while (rendered_lines < window_height) {
 			cursor_move_right(horizontal_offset);
 			print_side_border(border.side_left, effect);
@@ -263,51 +322,7 @@ void render_window_content(const wi_window* window, const int horizontal_offset)
 		}
 
 	} else {
-		int first_line_show = render_offset.row;
-		int last_line_show = first_line_show + window_height;
-
-		for (int i = first_line_show; i < last_line_show; i++) {
-			cursor_move_right(horizontal_offset);
-			int col = 0;
-			print_side_border(border.side_left, effect);
-
-			/* Cursor */
-			if (do_line_render && i - first_line_show == visual_cursor_pos.row) {
-				printf("\033[7m");
-			}
-
-			int line_length = i < content->amount_lines
-				? content->line_lengths[i] : 0;
-
-			/* Content */
-			while (col + render_offset.col < line_length && col < window_width) {
-				bool render_cursor_now =
-					do_point_render
-					&& i == visual_cursor_pos.row + first_line_show
-					&& col == visual_cursor_pos.col;
-				if (render_cursor_now) {
-					printf("\033[7m");
-				}
-				printf("%c", content->lines[i][col + render_offset.col]);
-				if (render_cursor_now) {
-					printf("\033[0m");
-				}
-				col++;
-			}
-			/* Fill rest of line */
-			while (col < window_width) {
-				printf(" ");
-				col++;
-			}
-
-			/* Cursor */
-			if (do_line_render && i - first_line_show == visual_cursor_pos.row) {
-				printf("\033[0m");
-			}
-
-			print_side_border(border.side_right, effect);
-			printf("\n");
-		}
+		render_content_no_wrap(window, horizontal_offset);
 	}
 }
 
@@ -321,7 +336,7 @@ void render_window_content(const wi_window* window, const int horizontal_offset)
  *
  * The only magic happening, is the alignment.
  */
-void render_window_border(
+void render_horizontal_border(
 	const char* left, const char* mid, const char* right,
 	const wi_info_alignment alignment, const char* info, const int width
 ) {
@@ -380,19 +395,19 @@ void render_window(const wi_window* window, const int horizontal_offset) {
 
 		cursor_move_right(horizontal_offset);
 		printf("%s", effect);
-		render_window_border(
+		render_horizontal_border(
 			border.corner_top_left, border.side_top, border.corner_top_right,
 			border.title_alignment, border.title, window->internal.rendered_width
 		);
 		printf("\033[0m\n");
 	}
 
-	render_window_content(window, horizontal_offset);
+	render_content(window, horizontal_offset);
 
 	if (border.corner_bottom_left != NULL) {
 		cursor_move_right(horizontal_offset);
 		printf("%s", effect);
-		render_window_border(
+		render_horizontal_border(
 			border.corner_bottom_left, border.side_bottom, border.corner_bottom_right,
 			border.footer_alignment, border.footer, window->internal.rendered_width
 		);
@@ -440,7 +455,7 @@ wi_content* wi_get_current_window_content(const wi_window* window) {
 	}
 	wi_window* dep = window->depends_on;
 	wi_position dep_visual_cursor_pos = dep->internal.visual_cursor_position;
-	wi_position dep_content_offset = dep->internal.content_render_offset;
+	wi_position dep_content_offset = dep->internal.content_offset_chars;
 
 	int row = dep_visual_cursor_pos.row + dep_content_offset.row;
 	int col = dep_visual_cursor_pos.col + dep_content_offset.col;
@@ -460,6 +475,24 @@ wi_content* wi_get_current_window_content(const wi_window* window) {
 	}
 
 	return window->contents[row][col];
+}
+
+void print_debug_cursor(wi_session* session) {
+	wi_window* w = session->windows[session->focus_pos.row][session->focus_pos.col];
+	wi_position cursor_offset_c = w->internal.content_offset_chars;
+	wi_position cursor_visual = w->internal.visual_cursor_position;
+
+	wi_content* content = wi_get_current_window_content(w);
+	int cur_line = cursor_offset_c.row + cursor_visual.row;
+
+	printf(
+		"Offset: { %d, %d }, visual: { %d, %d }\n"
+		"Content: { chars: %d, bytes: %d }\n",
+		cursor_offset_c.row, cursor_offset_c.col,
+		cursor_visual.row, cursor_visual.col,
+		content->line_lengths_chars[cur_line],
+		content->line_lengths_bytes[cur_line]
+	);
 }
 
 int render_function(void* arg) {
@@ -482,6 +515,8 @@ int render_function(void* arg) {
 			} else {
 				cursor_move_up(printed_height);
 			}
+			clear_screen();
+			print_debug_cursor(session);
 			printed_height = wi_render_frame(session);
 			atomic_store(&(session->need_rerender), false);
 		}
