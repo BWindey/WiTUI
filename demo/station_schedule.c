@@ -1,11 +1,63 @@
 #include "wi_data.h"
 #include "wi_functions.h"
 
+#include <stdio.h>		/* printf() */
+#include <stdlib.h>		/* exit() */
+
+void show_and_exit(const char key, wi_session* session) {
+	wi_quit_rendering_and_wait(key, session);
+	wi_clear_screen_afterwards(session);
+
+	wi_window* table = session->windows[1][0];
+	wi_window* extra = session->windows[1][1];
+
+	char** table_lines = wi_get_current_window_content(table)->lines;
+	wi_position cur_pos = wi_get_window_cursor_pos(table);
+	char* table_line = table_lines[cur_pos.row];
+
+	printf("The train to ");
+	while (*table_line != ' ' && *table_line != '\0') {
+		putchar(*table_line);
+		table_line++;
+	}
+	while (!(*table_line >= '0' && *table_line <= '9')) {
+		table_line += wi_char_byte_size(table_line).bytes;
+	}
+	printf(" at ");
+	while ((*table_line >= '0' && *table_line <= '9') || (*table_line == ':')) {
+		putchar(*table_line);
+		table_line++;
+	}
+	if (table_line[1] == '+') {
+		table_line++;
+		printf(" (");
+		while (*table_line != ' ') {
+			putchar(*table_line);
+			table_line++;
+		}
+		printf(")");
+	}
+	printf(" departs on platform ");
+	while (!(*table_line >= '0' && *table_line <= '9')) {
+		table_line += wi_char_byte_size(table_line).bytes;
+	}
+	while (*table_line >= '0' && *table_line <= '9') {
+		putchar(*table_line);
+		table_line++;
+	}
+	putchar('\n');
+
+	wi_content* extra_content = wi_get_current_window_content(extra);
+	for (int i = 0; i < extra_content->amount_lines; i++) {
+		printf("%s\n", extra_content->lines[i]);
+	}
+}
+
 int main(void) {
 	wi_window* window_table_header = wi_make_window();
 	wi_window* window_table = wi_make_window();
 	wi_window* window_extra = wi_make_window();
-	wi_session* session = wi_make_session();
+	wi_session* session = wi_make_session(true);
 
 	window_table_header->width = 45;
 	window_table->width = 45;
@@ -33,7 +85,7 @@ int main(void) {
 	wi_add_content_to_window(
 		window_table,
 		"Antwerp-Central    \033[38;2;185;39;41m│\033[39m 09:16      \033[38;2;185;39;41m│\033[39m 5\n"
-		"Bruges             \033[38;2;185;39;41m│\033[39m 09:27      \033[38;2;185;39;41m│\033[39m 6\n"
+		"Bruges             \033[38;2;185;39;41m│\033[39m 09:27 +3   \033[38;2;185;39;41m│\033[39m 6\n"
 		"Ghent              \033[38;2;185;39;41m│\033[39m 09:41      \033[38;2;185;39;41m│\033[39m 1\n"
 		"Brussels-South     \033[38;2;185;39;41m│\033[39m 09:46      \033[38;2;185;39;41m│\033[39m 4\n"
 		"Ghent              \033[38;2;185;39;41m│\033[39m 10:01      \033[38;2;185;39;41m│\033[39m 1\n"
@@ -132,6 +184,10 @@ int main(void) {
 
 	/* Prevent from going to upper window */
 	wi_pop_keymap_from_session(session, 'k', CTRL);
+
+	/* Update keymaps so 'q' quits and leaves table,
+	 * and 'enter' erases table and shows the extra info for the selection. */
+	wi_add_keymap_to_session(session, '\n', NONE, show_and_exit);
 
 	wi_show_session(session);
 	wi_free_session(session);

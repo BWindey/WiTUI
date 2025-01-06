@@ -11,7 +11,7 @@ int main(void)
 	wi_window* window13 = wi_make_window();
 	wi_window* window20 = wi_make_window();
 
-	wi_session* session = wi_make_session();
+	wi_session* session = wi_make_session(true);
 
 	window02->wrap_text = true;
 
