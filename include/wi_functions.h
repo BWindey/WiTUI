@@ -151,6 +151,14 @@ int wi_render_frame(wi_session*);
  */
 wi_result wi_show_session(wi_session*);
 
+/*
+ * Clear screen where the session was printed.
+ * Only call this DIRECTLY after wi_show_session() has terminated.
+ * Will use the '.rendered_width' and _height stored in the windows from
+ * rendering them.
+ * Assumes that the cursor is standing just under the rendered session.
+ */
+void wi_clear_screen_afterwards(wi_session*);
 
 
 /* -------------------------

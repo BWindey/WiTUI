@@ -597,3 +597,29 @@ wi_result wi_show_session(wi_session* session) {
 
 	return cursor_position;
 }
+
+void wi_clear_screen_afterwards(wi_session* session) {
+	for (int i = session->internal.amount_rows - 1; i >= 0; i--) {
+		/* Determine highest window in the row */
+		int row_height = 0;
+		for (int j = 0; j < session->internal.amount_cols[i]; j++) {
+			int height = session->windows[i][j]->internal.rendered_height;
+			if (session->windows[i][j]->border.side_bottom != NULL) {
+				height++;
+			}
+			if (session->windows[i][j]->border.side_top != NULL) {
+				height++;
+			}
+
+			if (height > row_height) {
+				row_height = height;
+			}
+		}
+
+		while (row_height > 0) {
+			cursor_move_up(1);
+			printf("\033[2K");
+			row_height--;
+		}
+	}
+}
