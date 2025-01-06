@@ -448,14 +448,18 @@ int wi_render_frame(wi_session* session) {
 
 			render_window(window, accumulated_row_width);
 
-			cursor_move_up(window->internal.rendered_height);
-			if (window->border.corner_bottom_left != NULL) {
-				cursor_move_up(2);
+			int printed_height = window->internal.rendered_height;
+			if (window->border.side_top != NULL) {
+				printed_height++;
 			}
+			if (window->border.side_bottom != NULL) {
+				printed_height++;
+			}
+			cursor_move_up(printed_height);
 
 			accumulated_row_width += window->internal.rendered_width + 2;
-			if (window->internal.rendered_height + 2 > max_row_height) {
-				max_row_height = window->internal.rendered_height + 2;
+			if (printed_height > max_row_height) {
+				max_row_height = printed_height;
 			}
 		}
 		cursor_move_down(max_row_height);
@@ -525,11 +529,6 @@ int render_function(void* arg) {
 	wi_session* session = (wi_session*) arg;
 	int printed_height = 0;
 
-
-	/* First calculation so that we don't always clear the screen in the
-	 * beginning of a program, and act like cursor has changed so that an
-	 * initial rendering-draw definitely happens.
-	 * This is a bit awkward, but prevents copying the body-loop here. */
 	calculate_window_dimension(session);
 	atomic_store(&(session->need_rerender), true);
 
