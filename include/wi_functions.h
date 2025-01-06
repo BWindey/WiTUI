@@ -10,7 +10,7 @@
  * 	- add things to data-structures
  * 	- display data-structures
  * 	- free data-structures
- * 	- handy functions for keymaps
+ * 	- handy functions for keymap
  */
 
 
@@ -110,7 +110,7 @@ wi_session* wi_add_keymap_to_session(
  * Remove a keymap from a session, where a keymap is defined by its key and
  * its modifier.
  * When the combination of key+modifier is more then once present in the
- * keymappings of the session, only the first will be removed.
+ * key mappings of the session, only the first will be removed.
  * When the combination is not present, nothing will happen. You just waisted
  * a few cpu cycles.
  *
@@ -122,7 +122,7 @@ wi_session* wi_pop_keymap_from_session(
 
 /*
  * Update a keymap from a session with a new callback-function.
- * A keymapping is defined by its key and its modifier.
+ * A key mapping is defined by its key and its modifier.
  * Only the first combination of key + modifier and a not-NULL callback will
  * get the new callback function.
  *
@@ -199,7 +199,7 @@ void wi_free_content(wi_content*);
 
 
 /* ---------------------------------------
- * Handy functions for making keymappings.
+ * Handy functions for making key mappings.
  * --------------------------------------- */
 
 /*
@@ -270,15 +270,26 @@ wi_position wi_get_window_cursor_pos(const wi_window* window);
 /*
  * Get 1 character from user.
  * When there is no character available to read, returns -1.
- * Assumes that the terminal is in raw, nonblocking mode, as set by
+ * Assumes that the terminal is in raw, non-blocking mode, as set by
  * `wi_show_session()`.
  */
 char wi_get_char(void);
 
 /*
  * Stop rendering the session, will give control back to the caller of
- * wi_show_session().
+ * `wi_show_session()`.
+ * Does not guarantee that rendering has completely finished, so this is not
+ * recommended to use inside a key map that prints something extra, as it could
+ * happen that the print happens while the last frame of the session is still
+ * being drawn. Use `wi_quit_rendering_and_wait()` to wait for drawing to be
+ * complete.
  */
 void wi_quit_rendering(const char, wi_session* session);
+
+/*
+ * Stop rendering the session, and wait until the render-thread and
+ * input-thread have joined the thread running `wi_show_session()`.
+ */
+void wi_quit_rendering_and_wait(const char, wi_session* session);
 
 #endif /* !WI_TUI_FUNCTIONS_HEADER_GUARD */

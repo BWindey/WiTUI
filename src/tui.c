@@ -8,6 +8,7 @@
 #include <stddef.h>		/* size_t */
 #include <stdlib.h>		/* malloc(), realloc(), free() */
 #include <string.h>		/* strdup(), strchr(), strlen() */
+#include <threads.h>	/* thrd_sleep() */
 
 wi_window* wi_make_window(void) {
 	wi_window* window = (wi_window*) malloc(sizeof(wi_window));
@@ -76,7 +77,8 @@ wi_session* wi_make_session(bool add_vim_keybindings) {
 		wi_add_keymap_to_session(session, 'q', NONE, wi_quit_rendering);
 	}
 
-	atomic_store(&(session->keep_running), true);
+	atomic_store(&session->keep_running, true);
+	session->running_threads = false;
 
 	return session;
 }
@@ -299,6 +301,22 @@ wi_position wi_get_window_cursor_pos(const wi_window *window) {
 	}
 
 	return actual;
+}
+
+void wi_quit_rendering(const char _, wi_session* session) {
+	(void)(_);
+	atomic_store(&session->keep_running, false);
+}
+
+void wi_quit_rendering_and_wait(const char _, wi_session* session) {
+	wi_quit_rendering(_, session);
+	while (session->running_threads) {
+		/* Sleep for 10ms */
+		thrd_sleep(
+			&(struct timespec) { .tv_sec = 0, .tv_nsec = 1e7 },
+			NULL /* No need to catch remaining time on interrupt */
+		);
+	}
 }
 
 

@@ -143,6 +143,7 @@ struct wi_session {
 
 	atomic_bool keep_running;
 	atomic_bool need_rerender;
+	bool running_threads;
 
 	/* Internal variables, do not change outside library-code,
 	 * unless you really know what you're doing. */

@@ -313,11 +313,6 @@ void wi_move_focus_right(const char _, wi_session* session) {
 	}
 }
 
-void wi_quit_rendering(const char _, wi_session* session) {
-	WI_UNUSED(_);
-	atomic_store(&session->keep_running, false);
-}
-
 
 int input_function(void* arg) {
 	wi_session* session = (wi_session*) arg;
