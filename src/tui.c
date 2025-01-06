@@ -78,7 +78,7 @@ wi_session* wi_make_session(bool add_vim_keybindings) {
 	}
 
 	atomic_store(&session->keep_running, true);
-	session->running_threads = false;
+	session->running_render_thread = false;
 
 	return session;
 }
@@ -305,12 +305,12 @@ wi_position wi_get_window_cursor_pos(const wi_window *window) {
 
 void wi_quit_rendering(const char _, wi_session* session) {
 	(void)(_);
-	atomic_store(&session->keep_running, false);
+	atomic_store(&(session->keep_running), false);
 }
 
 void wi_quit_rendering_and_wait(const char _, wi_session* session) {
 	wi_quit_rendering(_, session);
-	while (session->running_threads) {
+	while (session->running_render_thread) {
 		/* Sleep for 10ms */
 		thrd_sleep(
 			&(struct timespec) { .tv_sec = 0, .tv_nsec = 1e7 },

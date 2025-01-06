@@ -547,13 +547,16 @@ void wi_show_session(wi_session* session) {
 	thrd_t render_thread, input_thread;
 
 	/* Start threads, go! */
-	session->running_threads = true;
+	session->running_render_thread = true;
 	thrd_create(&render_thread, render_function, session);
 	thrd_create(&input_thread, input_function, session);
 
+	/* Join render-thread, set variable to false so that key mappings waiting
+	 * for render-thread to be done can execute (op the input-thread), and
+	 * join the input-thread. */
 	thrd_join(render_thread, NULL);
+	session->running_render_thread = false;
 	thrd_join(input_thread, NULL);
-	session->running_threads = false;
 }
 
 void wi_clear_screen_afterwards(wi_session* session) {
