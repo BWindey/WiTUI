@@ -130,6 +130,9 @@ int main(void) {
 	/* Start focus in table */
 	session->focus_pos.row = 1;
 
+	/* Prevent from going to upper window */
+	wi_pop_keymap_from_session(session, 'k', CTRL);
+
 	wi_show_session(session);
 	wi_free_session(session);
 }

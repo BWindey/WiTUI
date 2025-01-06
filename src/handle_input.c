@@ -340,6 +340,9 @@ int input_function(void* arg) {
 
 
 			for (int i = 0; i < amount_maps; i++) {
+				if (key_maps[i].callback == NULL) {
+					continue;
+				}
 				if (
 					alt_mod && key_maps[i].modifier == ALT
 					&& key_maps[i].key == c

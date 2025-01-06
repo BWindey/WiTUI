@@ -94,10 +94,39 @@ wi_window* wi_add_content_to_window(wi_window*, char* content, const wi_position
 /*
  * Add a new keymap to the session.
  * This function handles resource allocation for you.
+ *
+ * @returns: the session with the update keymap
  */
 wi_session* wi_add_keymap_to_session(
 	wi_session* session, const char key, const wi_modifier modifier,
 	void (*callback)(const char, wi_session*)
+);
+
+/*
+ * Remove a keymap from a session, where a keymap is defined by its key and
+ * its modifier.
+ * When the combination of key+modifier is more then once present in the
+ * keymappings of the session, only the first will be removed.
+ * When the combination is not present, nothing will happen. You just waisted
+ * a few cpu cycles.
+ *
+ * @returns: the session with the update keymap
+ */
+wi_session* wi_pop_keymap_from_session(
+	wi_session*, const char key, const wi_modifier
+);
+
+/*
+ * Update a keymap from a session with a new callback-function.
+ * A keymapping is defined by its key and its modifier.
+ * Only the first combination of key + modifier and a not-NULL callback will
+ * get the new callback function.
+ *
+ * @returns: the session with the update keymap
+ */
+wi_session* wi_update_keymap_from_session(
+	wi_session*, const char key, const wi_modifier,
+	void (*new_callback)(const char, wi_session*)
 );
 
 

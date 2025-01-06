@@ -83,11 +83,28 @@ wi_session* wi_add_keymap_to_session(
 	wi_session* session, const char key, const wi_modifier modifier,
 	void (*callback)(const char, wi_session*)
 ) {
+	/* First check if there is an available spot inside the array */
+	for (int i = 0; i < session->internal.amount_keymaps; i++) {
+		if (session->keymaps[i].callback == NULL) {
+			session->keymaps[i] = (wi_keymap) {
+				.modifier = modifier,
+				.key = key,
+				.callback = callback
+			};
+			return session;
+		}
+	}
+
+	/* Append keymap to the end of the array, but first grow it if necessary */
 	if (session->internal.amount_keymaps == session->internal.keymap_array_size) {
 		session->internal.keymap_array_size += 15;
 		session->keymaps = (wi_keymap*) realloc(
 			session->keymaps,
 			session->internal.keymap_array_size * sizeof(wi_keymap)
+		);
+		wiAssert(
+			session->keymaps != NULL,
+			"Failed to grow keymap array when adding keymap to session"
 		);
 	}
 	session->keymaps[session->internal.amount_keymaps] = (wi_keymap) {
@@ -97,6 +114,38 @@ wi_session* wi_add_keymap_to_session(
 	};
 	session->internal.amount_keymaps++;
 
+	return session;
+}
+
+wi_session* wi_pop_keymap_from_session(
+	wi_session* session, const char key, const wi_modifier modifier
+) {
+	wi_keymap map;
+	for (int i = 0; i < session->internal.amount_keymaps; i++) {
+		map = session->keymaps[i];
+		if (map.key == key && map.modifier == modifier && map.callback != NULL){
+			session->keymaps[i].callback = NULL;
+			if (i == session->internal.amount_keymaps - 1) {
+				session->internal.amount_keymaps--;
+			}
+			return session;
+		}
+	}
+	return session;
+}
+
+wi_session* wi_update_keymap_from_session(
+	wi_session* session, const char key, const wi_modifier modifier,
+	void (*new_callback)(const char, wi_session*)
+) {
+	wi_keymap map;
+	for (int i = 0; i < session->internal.amount_keymaps; i++) {
+		map = session->keymaps[i];
+		if (map.key == key && map.modifier == modifier && map.callback != NULL){
+			session->keymaps[i].callback = new_callback;
+			return session;
+		}
+	}
 	return session;
 }
 
