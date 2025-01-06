@@ -2,6 +2,7 @@
 #include <stdatomic.h>	/* atomic_bool */
 #include <stdbool.h>	/* true, false */
 #include <stdio.h>		/* printf() */
+#include <stdlib.h>
 #include <string.h>		/* strlen() */
 #include <sys/ioctl.h>	/* ioctl() */
 #include <threads.h>	/* thrd_t, thrd_create, thrd_join */
@@ -158,31 +159,117 @@ bool calculate_window_dimension(wi_session* session) {
 	return true;
 }
 
-/*
- * Calculate the amount of characters to print on a line,
- * while preventing to wrap inside a word.
- *
- * This will make sure that `content_pointer[wrap]`
- * (`wrap` being the return value)
- * is either a newline, null byte, space or '-'.
- *
- * When there is a single word on the line that is too long to fit, the word
- * will be split at `width`.
- *
- * @returns: index on which to wrap the string
- */
-int characters_until_wrap(char* content_pointer, int width) {
-	int wrap = 0;
-	/* TODO: */
-	wrap = width;
-	return wrap;
-}
-
 static inline void print_side_border(const char* border, const char* effect) {
 	if (border == NULL) {
 		border = "";
 	}
 	printf("\033[0m%s%s\033[0m", effect, border);
+}
+
+void render_content_wrap(const wi_window* window, const int horizontal_offset) {
+	/* Extract the needed variables */
+	const wi_content* content = wi_get_current_window_content(window);
+	const int window_width    = window->internal.rendered_width;
+	const int window_height   = window->internal.rendered_height;
+	const wi_border border    = window->border;
+	const int starting_row = window->internal.content_offset_chars.row;
+	const char* effect = window->internal.currently_focussed
+		? border.focussed_colour : border.unfocussed_colour;
+
+	/* Cursor variables */
+	/*wi_position cursor = window->internal.visual_cursor_position;*/
+	/*bool focus_in_depending_window = false;*/
+	/*for (int i = 0; i < window->internal.amount_depending; i++) {*/
+	/*	if (window->internal.depending_windows[i]->internal.currently_focussed) {*/
+	/*		focus_in_depending_window = true;*/
+	/*		break;*/
+	/*	}*/
+	/*}*/
+	/*bool do_line_cursor =*/
+	/*	(window->internal.currently_focussed || focus_in_depending_window)*/
+	/*	&& window->cursor_rendering == LINEBASED;*/
+	/*bool do_point_cursor =*/
+	/*	(window->internal.currently_focussed || focus_in_depending_window)*/
+	/*	&& window->cursor_rendering == POINTBASED;*/
+
+	/* We'll need to store current ansii-effects in a list */
+	/*int amount_ansii_effects = 0;*/
+	/*int size_ansii_effects_array = 10;*/
+	/*char** ansii_effects = (char**) malloc(size_ansii_effects_array * sizeof(char*));*/
+
+	int printed_rows = 0;
+	int processed_rows = 0;
+	int current_byte;
+	int current_line_length; /* In bytes */
+
+	while (
+		printed_rows < window_height
+		&& processed_rows + starting_row < content->amount_lines
+	) {
+		current_byte = 0;
+		current_line_length =
+			content->line_lengths_bytes[starting_row + processed_rows];
+		char* current_line = content->lines[starting_row + processed_rows];
+
+		/* While loop over the whole actual line */
+		while (current_byte < current_line_length) {
+			/* See how much we can put on this line */
+			int can_print_bytes = 0;
+			int can_print_chars = 0;
+			int overshoot_chars = 0;
+			int overshoot_bytes = 0;
+			while (
+				current_byte + can_print_bytes < current_line_length
+				&& can_print_chars < window_width
+			) {
+				wi_code_lengths codepoint_length = wi_char_byte_size(
+					current_line + current_byte + can_print_bytes
+				);
+				can_print_chars += codepoint_length.width;
+				can_print_bytes += codepoint_length.bytes;
+
+				/* Check if we can wrap here */
+				if (
+					current_line[current_byte + can_print_bytes] == ' '
+					|| current_line[current_byte + can_print_bytes] == '\0'
+					|| current_line[current_byte + can_print_bytes] == '-'
+				) {
+					overshoot_bytes = 0;
+					overshoot_chars = 0;
+				} else {
+					overshoot_chars += codepoint_length.width;
+					overshoot_bytes += codepoint_length.bytes;
+				}
+			}
+			if (current_line[current_byte + can_print_bytes] == '\0') {
+				overshoot_bytes = 0;
+				overshoot_chars = 0;
+			}
+
+			cursor_move_right(horizontal_offset);
+			print_side_border(border.side_right, effect);
+
+			printf(
+				"%.*s",
+				can_print_bytes - overshoot_bytes,
+				current_line + current_byte
+			);
+			printf(
+				"%*c",
+				window_width - can_print_bytes - overshoot_chars,
+				' '
+			);
+
+			current_byte += can_print_bytes;
+
+			print_side_border(border.side_left, effect);
+			putchar('\n');
+
+			printed_rows++;
+		}
+		processed_rows++;
+	}
+
 }
 
 void render_content_no_wrap(const wi_window* window, const int horizontal_offset) {
@@ -226,7 +313,7 @@ void render_content_no_wrap(const wi_window* window, const int horizontal_offset
 
 
 	/* Variables to keep track of where I am */
-	int printed_rows  = 0;
+	int printed_rows = 0;
 	int skipped_chars;
 	int printed_chars;
 	int current_byte;
@@ -317,27 +404,8 @@ void render_content_no_wrap(const wi_window* window, const int horizontal_offset
 }
 
 void render_content(const wi_window* window, const int horizontal_offset) {
-	const int window_width = window->internal.rendered_width;
-	const int window_height = window->internal.rendered_height;
-
-	const wi_border border = window->border;
-	const char* effect = window->internal.currently_focussed ?
-		border.focussed_colour : border.unfocussed_colour;
-
 	if (window->wrap_text) {
-		/* TODO: wrapping */
-		int rendered_lines = 0;
-		while (rendered_lines < window_height) {
-			cursor_move_right(horizontal_offset);
-			print_side_border(border.side_left, effect);
-			for (int _ = 0; _ < window_width; _++) {
-				printf(" ");
-			}
-			print_side_border(border.side_right, effect);
-			printf("\n");
-			rendered_lines++;
-		}
-
+		render_content_wrap(window, horizontal_offset);
 	} else {
 		render_content_no_wrap(window, horizontal_offset);
 	}
@@ -504,7 +572,7 @@ int render_function(void* arg) {
 			} else {
 				cursor_move_up(printed_height);
 			}
-			/*print_debug_cursor(session);*/
+			print_debug_cursor(session);
 			printed_height = wi_render_frame(session);
 			atomic_store(&(session->need_rerender), false);
 		}
