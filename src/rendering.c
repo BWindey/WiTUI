@@ -508,6 +508,7 @@ wi_content* wi_get_current_window_content(const wi_window* window) {
 }
 
 void print_debug_cursor(wi_session* session) {
+	clear_screen();
 	wi_window* w = session->windows[session->focus_pos.row][session->focus_pos.col];
 	wi_position cursor_offset_c = w->internal.content_offset_chars;
 	wi_position cursor_visual = w->internal.visual_cursor_position;
@@ -540,8 +541,7 @@ int render_function(void* arg) {
 			} else {
 				cursor_move_up(printed_height);
 			}
-			clear_screen();
-			print_debug_cursor(session);
+			/*print_debug_cursor(session);*/
 			printed_height = wi_render_frame(session);
 			atomic_store(&(session->need_rerender), false);
 		}
