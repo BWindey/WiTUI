@@ -42,7 +42,11 @@ wi_window* wi_make_window(void);
  *		- windows - empty
  *		- start_clear_screen = false
  *		- focus_pos = { 0, 0 }
- *		- keymap - vim-keybindings
+ *		- keybinds - empty
+ *
+ * When add_vim_keybindings is `true`, this function adds
+ * 'hjkl' to move the cursor inside a window,
+ * CTRL+'hjkl' to move focus between windows and 'q' to quit.
  *
  * See the library README.md for more details.
  *
