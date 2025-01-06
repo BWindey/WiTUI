@@ -3,22 +3,22 @@
 #include <stdlib.h> 	/* malloc(), realloc() */
 #include <string.h>		/* strcpy() */
 
-code_lengths char_byte_size(const char* c) {
+wi_code_lengths wi_char_byte_size(const char* c) {
 	if ((*c & 0xF0) == 0xF0) { 			/* 11110000 */
-		return (code_lengths) { .width = 1, .bytes = 4 };
+		return (wi_code_lengths) { .width = 1, .bytes = 4 };
 	} else if ((*c & 0xE0) == 0xE0) { 	/* 11100000 */
-		return (code_lengths) { .width = 1, .bytes = 3 };
+		return (wi_code_lengths) { .width = 1, .bytes = 3 };
 	} else if ((*c & 0xC0) == 0xC0) { 	/* 11000000 */
-		return (code_lengths) { .width = 1, .bytes = 2 };
+		return (wi_code_lengths) { .width = 1, .bytes = 2 };
 	} else if (*c == '\033') {
 		unsigned short bytes = 1;
 		do {
 			bytes++;
 			c++;
 		} while (*c != 'm');
-		return (code_lengths) { .width = 0, .bytes = bytes };
+		return (wi_code_lengths) { .width = 0, .bytes = bytes };
 	}
-	return (code_lengths) { .width = 1, .bytes = 1 };
+	return (wi_code_lengths) { .width = 1, .bytes = 1 };
 }
 
 wi_content* split_lines(const char* content) {
@@ -80,7 +80,7 @@ wi_content* split_lines(const char* content) {
 			}
 			i++;
 		} else {
-			code_lengths codepoint_length = char_byte_size(content + i);
+			wi_code_lengths codepoint_length = wi_char_byte_size(content + i);
 			line_length_bytes += codepoint_length.bytes;
 			i += codepoint_length.bytes;
 			line_length_chars += codepoint_length.width;

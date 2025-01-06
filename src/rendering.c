@@ -251,7 +251,7 @@ void render_content_no_wrap(const wi_window* window, const int horizontal_offset
 		/* Skip first 'char_offset' characters, but do print the ansii escape
 		 * codes for text markup */
 		while (skipped_chars < char_offset) {
-			code_lengths char_length = char_byte_size(current_line + current_byte);
+			wi_code_lengths char_length = wi_char_byte_size(current_line + current_byte);
 			if (current_line[current_byte] == '\033') {
 				printf("%.*s", char_length.bytes, current_line + current_byte);
 			}
@@ -278,8 +278,8 @@ void render_content_no_wrap(const wi_window* window, const int horizontal_offset
 				printf("\033[7m");
 			}
 
-			code_lengths char_length =
-				char_byte_size(current_line + current_byte);
+			wi_code_lengths char_length =
+				wi_char_byte_size(current_line + current_byte);
 			printf("%.*s", char_length.bytes, current_line + current_byte);
 			current_byte += char_length.bytes;
 			printed_chars += char_length.width;

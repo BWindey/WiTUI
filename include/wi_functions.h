@@ -292,4 +292,19 @@ void wi_quit_rendering(const char, wi_session* session);
  */
 void wi_quit_rendering_and_wait(const char, wi_session* session);
 
+/*
+ * A function that takes in a pointer to a string, and returns how much visual
+ * space (in characters) that "thing" takes up.
+ *
+ * Currently supports UTF8-encoded characters that take up 1 character,
+ * and ansii escape codes that take up 0 characters ('\033[...m').
+ *
+ * No support yet for other zero-width characters or grapheme clusters.
+ *
+ * Returns the result as a `wi_position`, where the row is the amount of
+ * visual space the characters takes, and the col is the amount of bytes the
+ * character takes.
+ */
+wi_code_lengths wi_char_byte_size(const char*);
+
 #endif /* !WI_TUI_FUNCTIONS_HEADER_GUARD */

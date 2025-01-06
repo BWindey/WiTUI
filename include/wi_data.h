@@ -33,6 +33,13 @@
 typedef struct wi_border wi_border;
 
 /*
+ * To support UTF8 and anssi escape sequences, I need this to tell me how long
+ * a "character" in a string is. This struct is the result of
+ * `wi_char_byte_size()`, it contains `.bytes` and `.width` (visual).
+ */
+typedef struct wi_code_lengths wi_code_lengths;
+
+/*
  * Represents an array of lines that form the content of a window.
  * Contains the lines, line_lengths, actual amount_lines, and
  * internal_amount_lines for memory-management.
@@ -109,6 +116,11 @@ struct wi_border {
 
 	char* focussed_colour;
 	char* unfocussed_colour;
+};
+
+struct wi_code_lengths {
+	unsigned short width;
+	unsigned short bytes;
 };
 
 struct wi_content {
