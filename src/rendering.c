@@ -470,43 +470,6 @@ int wi_render_frame(wi_session* session) {
 	return accumulated_height;
 }
 
-wi_content* wi_get_current_window_content(const wi_window* window) {
-	if (window->depends_on == NULL) {
-		wiAssert(
-			window->contents != NULL,
-			"contents can not be NULL for non-depending window"
-		);
-		return window->contents[0][0];
-	}
-	wi_window* dep = window->depends_on;
-	wi_position dep_visual_cursor_pos = dep->internal.visual_cursor_position;
-	wi_position dep_content_offset = dep->internal.content_offset_chars;
-
-	int row = dep_visual_cursor_pos.row + dep_content_offset.row;
-	int col = dep_visual_cursor_pos.col + dep_content_offset.col;
-
-	if (row >= window->internal.content_rows) {
-		row = window->internal.content_rows - 1;
-	}
-	if (col >= window->internal.content_cols[row]) {
-		col = window->internal.content_cols[row] - 1;
-	}
-
-	while (col > 0 && window->contents[row][col] == NULL) {
-		col--;
-	}
-	while (row > 0 && window->contents[row][col] == NULL) {
-		row--;
-	}
-
-	wiAssert(
-		window->contents[row][col] != NULL,
-		"Could not find non-NULL content for a depending window"
-	);
-
-	return window->contents[row][col];
-}
-
 void print_debug_cursor(wi_session* session) {
 	clear_screen();
 	wi_window* w = session->windows[session->focus_pos.row][session->focus_pos.col];

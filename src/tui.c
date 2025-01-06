@@ -245,6 +245,64 @@ void wi_bind_dependency(wi_window* parent, wi_window* depending) {
 		depending;
 }
 
+wi_content* wi_get_current_window_content(const wi_window* window) {
+	if (window->depends_on == NULL) {
+		wiAssert(
+			window->contents != NULL,
+			"contents can not be NULL for non-depending window"
+		);
+		return window->contents[0][0];
+	}
+	wi_window* dep = window->depends_on;
+	wi_position dep_visual_cursor_pos = dep->internal.visual_cursor_position;
+	wi_position dep_content_offset = dep->internal.content_offset_chars;
+
+	int row = dep_visual_cursor_pos.row + dep_content_offset.row;
+	int col = dep_visual_cursor_pos.col + dep_content_offset.col;
+
+	if (row >= window->internal.content_rows) {
+		row = window->internal.content_rows - 1;
+	}
+	if (col >= window->internal.content_cols[row]) {
+		col = window->internal.content_cols[row] - 1;
+	}
+
+	while (col > 0 && window->contents[row][col] == NULL) {
+		col--;
+	}
+	while (row > 0 && window->contents[row][col] == NULL) {
+		row--;
+	}
+
+	wiAssert(
+		window->contents[row][col] != NULL,
+		"Could not find non-NULL content for a depending window"
+	);
+
+	return window->contents[row][col];
+}
+
+wi_position wi_get_window_cursor_pos(const wi_window *window) {
+	const wi_content* window_content = wi_get_current_window_content(window);
+	const wi_position visual = window->internal.visual_cursor_position;
+	const wi_position offset = window->internal.content_offset_chars;
+
+	wi_position actual = (wi_position) {
+		.row = visual.row + offset.row,
+		.col = visual.col + offset.col
+	};
+
+	if (actual.row >= window_content->amount_lines) {
+		actual.row = window_content->amount_lines - 1;
+	}
+	if (actual.col >= (int) window_content->line_lengths_chars[actual.row]) {
+		actual.col = window_content->line_lengths_chars[actual.row] - 1;
+	}
+
+	return actual;
+}
+
+
 void wi_free_session(wi_session* session) {
 	/* Free all the windows... Yay */
 	for (int i = 0; i < session->internal.amount_rows; i++) {

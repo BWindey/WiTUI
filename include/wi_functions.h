@@ -262,6 +262,15 @@ void wi_move_focus_right(const char, wi_session* session);
 wi_content* wi_get_current_window_content(const wi_window* window);
 
 /*
+ * Get the current cursor-position from a window.
+ * The actual cursor-position is split over 2 internal variables, and can be
+ * out of bounds (details...), so this is a utility function to easily get
+ * what you want.
+ */
+wi_position wi_get_window_cursor_pos(const wi_window* window);
+
+
+/*
  * Get 1 character from user.
  * When there is no character available to read, returns -1.
  * Assumes that the terminal is in raw, nonblocking mode, as set by
