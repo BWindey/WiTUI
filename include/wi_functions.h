@@ -2,6 +2,7 @@
 #define WI_TUI_FUNCTIONS_HEADER_GUARD
 
 #include "wi_data.h"
+#include <stdbool.h>
 
 /*
  * All functions are gathered here:
@@ -47,7 +48,7 @@ wi_window* wi_make_window(void);
  *
  * @returns: created window
  */
-wi_session* wi_make_session(void);
+wi_session* wi_make_session(bool add_vim_keybindings);
 
 
 /* -----------------------------

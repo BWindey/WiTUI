@@ -47,7 +47,7 @@ wi_window* wi_make_window(void) {
 	return window;
 }
 
-wi_session* wi_make_session(void) {
+wi_session* wi_make_session(bool add_vim_keybindings) {
 	wi_session* session = (wi_session*) malloc(sizeof(wi_session));
 
 	/* Starting with a 1 empty row */
@@ -64,15 +64,18 @@ wi_session* wi_make_session(void) {
 	session->keymaps = (wi_keymap*) malloc(keymap_array_size * sizeof(wi_keymap));
 	session->internal.keymap_array_size = keymap_array_size;
 	session->internal.amount_keymaps = 0;
-	wi_add_keymap_to_session(session, 'h', NONE, wi_scroll_left);
-	wi_add_keymap_to_session(session, 'l', NONE, wi_scroll_right);
-	wi_add_keymap_to_session(session, 'k', NONE, wi_scroll_up);
-	wi_add_keymap_to_session(session, 'j', NONE, wi_scroll_down);
-	wi_add_keymap_to_session(session, 'h', CTRL, wi_move_focus_left);
-	wi_add_keymap_to_session(session, 'l', CTRL, wi_move_focus_right);
-	wi_add_keymap_to_session(session, 'k', CTRL, wi_move_focus_up);
-	wi_add_keymap_to_session(session, 'j', CTRL, wi_move_focus_down);
-	wi_add_keymap_to_session(session, 'q', NONE, wi_quit_rendering);
+
+	if (add_vim_keybindings) {
+		wi_add_keymap_to_session(session, 'h', NONE, wi_scroll_left);
+		wi_add_keymap_to_session(session, 'j', NONE, wi_scroll_down);
+		wi_add_keymap_to_session(session, 'k', NONE, wi_scroll_up);
+		wi_add_keymap_to_session(session, 'l', NONE, wi_scroll_right);
+		wi_add_keymap_to_session(session, 'h', CTRL, wi_move_focus_left);
+		wi_add_keymap_to_session(session, 'j', CTRL, wi_move_focus_down);
+		wi_add_keymap_to_session(session, 'k', CTRL, wi_move_focus_up);
+		wi_add_keymap_to_session(session, 'l', CTRL, wi_move_focus_right);
+		wi_add_keymap_to_session(session, 'q', NONE, wi_quit_rendering);
+	}
 
 	atomic_store(&(session->keep_running), true);
 
