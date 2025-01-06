@@ -250,7 +250,7 @@ void render_content_no_wrap(const wi_window* window, const int horizontal_offset
 
 		/* Skip first 'char_offset' characters, but do print the ansii escape
 		 * codes for text markup */
-		while (skipped_chars < char_offset) {
+		while (skipped_chars < char_offset && skipped_chars < current_line_length) {
 			wi_code_lengths char_length = wi_char_byte_size(current_line + current_byte);
 			if (current_line[current_byte] == '\033') {
 				printf("%.*s", char_length.bytes, current_line + current_byte);

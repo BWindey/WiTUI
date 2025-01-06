@@ -1,10 +1,13 @@
+#include "wi_data.h"
 #include "wi_internals.h"
 
 #include <stdlib.h> 	/* malloc(), realloc() */
 #include <string.h>		/* strcpy() */
 
 wi_code_lengths wi_char_byte_size(const char* c) {
-	if ((*c & 0xF0) == 0xF0) { 			/* 11110000 */
+	if (*c == '\0') {
+		return (wi_code_lengths) { .width = 0, .bytes = 1 };
+	} else if ((*c & 0xF0) == 0xF0) { 	/* 11110000 */
 		return (wi_code_lengths) { .width = 1, .bytes = 4 };
 	} else if ((*c & 0xE0) == 0xE0) { 	/* 11100000 */
 		return (wi_code_lengths) { .width = 1, .bytes = 3 };
@@ -15,7 +18,7 @@ wi_code_lengths wi_char_byte_size(const char* c) {
 		do {
 			bytes++;
 			c++;
-		} while (*c != 'm');
+		} while (*c != 'm' && *c != '\0');
 		return (wi_code_lengths) { .width = 0, .bytes = bytes };
 	}
 	return (wi_code_lengths) { .width = 1, .bytes = 1 };
