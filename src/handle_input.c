@@ -114,8 +114,7 @@ char convert_key(wi_keymap keymap) {
 
 void wi_scroll_up(const char _, wi_session* session) {
 	WI_UNUSED(_);
-	wi_window* focussed_window =
-		session->windows[session->focus_pos.row][session->focus_pos.col];
+	wi_window* focussed_window = wi_get_focussed_window(session);
 	if (focussed_window->internal.visual_cursor_position.row > 0) {
 		focussed_window->internal.visual_cursor_position.row--;
 		atomic_store(&(session->need_rerender), true);
@@ -127,8 +126,7 @@ void wi_scroll_up(const char _, wi_session* session) {
 
 void wi_scroll_down(const char _, wi_session* session) {
 	WI_UNUSED(_);
-	wi_window* focussed_window =
-		session->windows[session->focus_pos.row][session->focus_pos.col];
+	wi_window* focussed_window = wi_get_focussed_window(session);
 
 	/* Aliasses for these loooooong names */
 	int* visual_row = &focussed_window->internal.visual_cursor_position.row;
@@ -154,8 +152,7 @@ void wi_scroll_down(const char _, wi_session* session) {
 
 void wi_scroll_left(const char _, wi_session* session) {
 	WI_UNUSED(_);
-	wi_window* focussed_window =
-		session->windows[session->focus_pos.row][session->focus_pos.col];
+	wi_window* focussed_window = wi_get_focussed_window(session);
 
 	if (
 		focussed_window->wrap_text
@@ -197,8 +194,7 @@ void wi_scroll_left(const char _, wi_session* session) {
 
 void wi_scroll_right(const char _, wi_session* session) {
 	WI_UNUSED(_);
-	wi_window* focussed_window =
-		session->windows[session->focus_pos.row][session->focus_pos.col];
+	wi_window* focussed_window = wi_get_focussed_window(session);
 
 	if (focussed_window->wrap_text && focussed_window->cursor_rendering == LINEBASED) {
 		return;
@@ -244,6 +240,9 @@ void wi_scroll_right(const char _, wi_session* session) {
 void un_focus(wi_session* session) {
 	int cursor_row = session->focus_pos.row;
 	int cursor_col = session->focus_pos.col;
+	if (cursor_col >= session->internal.amount_cols[cursor_row]) {
+		cursor_col = session->internal.amount_cols[cursor_row] - 1;
+	}
 
 	session->windows[cursor_row][cursor_col]
 		->internal.currently_focussed = false;
@@ -252,6 +251,9 @@ void un_focus(wi_session* session) {
 void focus(wi_session* session) {
 	int cursor_row = session->focus_pos.row;
 	int cursor_col = session->focus_pos.col;
+	if (cursor_col >= session->internal.amount_cols[cursor_row]) {
+		cursor_col = session->internal.amount_cols[cursor_row] - 1;
+	}
 
 	session->windows[cursor_row][cursor_col]
 		->internal.currently_focussed = true;
@@ -264,7 +266,7 @@ void focus(wi_session* session) {
 void sanitize_session_column_number(wi_session* session) {
 	int s_cursor_row = session->focus_pos.row;
 	int s_cursor_col = session->focus_pos.col;
-	if (s_cursor_col + 1 >= session->internal.amount_cols[s_cursor_row]) {
+	if (s_cursor_col >= session->internal.amount_cols[s_cursor_row]) {
 		session->focus_pos.col = session->internal.amount_cols[s_cursor_row] - 1;
 	}
 }
@@ -274,7 +276,6 @@ void wi_move_focus_up(const char _, wi_session* session) {
 	if (session->focus_pos.row > 0) {
 		un_focus(session);
 		session->focus_pos.row--;
-		sanitize_session_column_number(session);
 		focus(session);
 		atomic_store(&(session->need_rerender), true);
 	}
@@ -285,7 +286,6 @@ void wi_move_focus_down(const char _, wi_session* session) {
 	if (session->focus_pos.row + 1 < session->internal.amount_rows) {
 		un_focus(session);
 		session->focus_pos.row++;
-		sanitize_session_column_number(session);
 		focus(session);
 		atomic_store(&(session->need_rerender), true);
 	}
@@ -293,6 +293,7 @@ void wi_move_focus_down(const char _, wi_session* session) {
 
 void wi_move_focus_left(const char _, wi_session* session) {
 	WI_UNUSED(_);
+	sanitize_session_column_number(session);
 	if (session->focus_pos.col > 0) {
 		un_focus(session);
 		session->focus_pos.col--;
@@ -305,6 +306,7 @@ void wi_move_focus_right(const char _, wi_session* session) {
 	WI_UNUSED(_);
 	int current_col = session->focus_pos.col;
 	int max_col = session->internal.amount_cols[session->focus_pos.row];
+	sanitize_session_column_number(session);
 	if (current_col + 1 < max_col) {
 		un_focus(session);
 		session->focus_pos.col++;

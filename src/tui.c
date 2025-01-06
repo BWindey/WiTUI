@@ -246,6 +246,16 @@ void wi_bind_dependency(wi_window* parent, wi_window* depending) {
 		depending;
 }
 
+wi_window* wi_get_focussed_window(wi_session* session) {
+	int s_cursor_row = session->focus_pos.row;
+	int s_cursor_col = session->focus_pos.col;
+	if (s_cursor_col >= session->internal.amount_cols[s_cursor_row]) {
+		s_cursor_col = session->internal.amount_cols[s_cursor_row] - 1;
+	}
+
+	return session->windows[s_cursor_row][s_cursor_col];
+}
+
 wi_content* wi_get_current_window_content(const wi_window* window) {
 	if (window->depends_on == NULL) {
 		wiAssert(
