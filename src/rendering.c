@@ -525,12 +525,7 @@ void handle_sigint(int _) {
 	exit(0);
 }
 
-wi_result wi_show_session(wi_session* session) {
-	wi_result cursor_position = (wi_result) {
-		(wi_position) { 0, 0 },
-		(wi_position) { 0, 0 }
-	};
-
+void wi_show_session(wi_session* session) {
 	int focus_row = session->focus_pos.row;
 	int focus_col = session->focus_pos.col;
 	wiAssert(
@@ -557,8 +552,6 @@ wi_result wi_show_session(wi_session* session) {
 
 	thrd_join(render_thread, NULL);
 	thrd_join(input_thread, NULL);
-
-	return cursor_position;
 }
 
 void wi_clear_screen_afterwards(wi_session* session) {

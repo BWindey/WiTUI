@@ -27,7 +27,6 @@
  * 		- contents - empty
  * 		- border - empty title and footer, rounded borders
  * 		- wrap_text = false
- * 		- store_cursor_position = true
  * 		- depending_windows = NULL
  *
  * See the library README.md for more details.
@@ -150,10 +149,8 @@ int wi_render_frame(wi_session*);
 /*
  * Render a session to the screen, and take in user input.
  * Quits when `wi_quit_rendering()` is called on this session.
- *
- * @returns: last cursor position (which window + which coordinate).
  */
-wi_result wi_show_session(wi_session*);
+void wi_show_session(wi_session*);
 
 /*
  * Clear screen where the session was printed.

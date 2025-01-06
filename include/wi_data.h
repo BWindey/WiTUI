@@ -49,13 +49,6 @@ typedef struct wi_keymap wi_keymap;
 typedef struct wi_position wi_position;
 
 /*
- * A package for 2 wi_position's.
- * Used to return the last focussed window in a session, and the cursor-position
- * in that last focussed window.
- */
-typedef struct wi_result wi_result;
-
-/*
  * A container for wi_window's. Holds a 2D array of windows, whether to clear
  * the screen before rendering, which window is focussed, a list of wi_keymap's,
  * 2 atomic-bools keep_running and need_rerender.
@@ -141,11 +134,6 @@ struct wi_position {
 	int col;
 };
 
-struct wi_result {
-	wi_position last_window;
-	wi_position last_cursor;
-};
-
 struct wi_session {
 	/* (HEAP) */
 	wi_window*** windows;
@@ -175,7 +163,6 @@ struct wi_window {
 	wi_border border;
 
 	bool wrap_text;
-	bool store_cursor_position;
 
 	wi_cursor_rendering cursor_rendering;
 
