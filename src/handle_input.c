@@ -328,7 +328,7 @@ int input_function(void* arg) {
 		if (c > 0) {
 			bool alt_mod = false;
 
-			if (c == 27) {
+			if (c == '\033') {
 				c = wi_get_char();
 				alt_mod = true;
 			}
