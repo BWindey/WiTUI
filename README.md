@@ -190,7 +190,7 @@ A session is a struct that consists of the following values:
     This is the 2D array on the heap with pointers to the windows attached
     to the session. I would strongly discourage modifying this directly.
     Use the function `wi_add_window_to_session(..)` instead to handle everything.
-- `fullscreen` (`bool`):
+- `start_clear_screen` (`bool`):
     This setting indicates whether a `clear` should be called before each
     rendered frame. If this is set to `false`, the session will be rendered
     just below the shell-prompt.
