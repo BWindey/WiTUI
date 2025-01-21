@@ -139,7 +139,6 @@ bool calculate_window_dimension(wi_session* session) {
 			width_to_distribute - (distributed_width * amount_to_compute);
 
 		for (int col = 0; col < amount_to_compute; col++) {
-			/* -2 because border */
 			wi_window* window = windows_to_compute[col];
 			window->internal.rendered_width = distributed_width;
 			if (window->border.side_left != NULL) {
@@ -539,22 +538,22 @@ int wi_render_frame(wi_session* session) {
 }
 
 void print_debug_cursor(wi_session* session) {
-	clear_screen();
-	wi_window* w = session->windows[session->focus_pos.row][session->focus_pos.col];
-	wi_position cursor_offset_c = w->internal.content_offset_chars;
-	wi_position cursor_visual = w->internal.visual_cursor_position;
-
-	wi_content* content = wi_get_current_window_content(w);
-	int cur_line = cursor_offset_c.row + cursor_visual.row;
-
-	printf(
-		"Offset: { %d, %d }, visual: { %d, %d }\n"
-		"Content: { chars: %d, bytes: %d }\n",
-		cursor_offset_c.row, cursor_offset_c.col,
-		cursor_visual.row, cursor_visual.col,
-		content->line_lengths_chars[cur_line],
-		content->line_lengths_bytes[cur_line]
-	);
+	/*clear_screen();*/
+	/*wi_window* w = session->windows[session->focus_pos.row][session->focus_pos.col];*/
+	/*wi_position cursor_offset_c = w->internal.content_offset_chars;*/
+	/*wi_position cursor_visual = w->internal.visual_cursor_position;*/
+	/**/
+	/*wi_content* content = wi_get_current_window_content(w);*/
+	/*int cur_line = cursor_offset_c.row + cursor_visual.row;*/
+	/**/
+	/*printf(*/
+	/*	"Offset: { %d, %d }, visual: { %d, %d }\n"*/
+	/*	"Content: { chars: %d, bytes: %d }\n",*/
+	/*	cursor_offset_c.row, cursor_offset_c.col,*/
+	/*	cursor_visual.row, cursor_visual.col,*/
+	/*	content->line_lengths_chars[cur_line],*/
+	/*	content->line_lengths_bytes[cur_line]*/
+	/*);*/
 }
 
 int render_function(void* arg) {
