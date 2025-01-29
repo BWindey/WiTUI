@@ -1,7 +1,6 @@
 #ifndef WI_TUI_DATA_HEADER_GUARD
 #define WI_TUI_DATA_HEADER_GUARD
 
-#include <stddef.h>		/* size_t */
 #include <stdbool.h>	/* bool */
 #include <stdatomic.h>	/* atomic_bool */
 
@@ -37,12 +36,11 @@ typedef struct wi_border wi_border;
  * a "character" in a string is. This struct is the result of
  * `wi_char_byte_size()`, it contains `.bytes` and `.width` (visual).
  */
-typedef struct wi_code_lengths wi_code_lengths;
+typedef struct wi_string_length wi_string_length;
 
 /*
- * Represents an array of lines that form the content of a window.
- * Contains the lines, line_lengths, actual amount_lines, and
- * internal_amount_lines for memory-management.
+ * A wrapper around a `wi_string` and a list of `wi_string_view`s that will
+ * be the lines to display.
  */
 typedef struct wi_content wi_content;
 
@@ -62,6 +60,20 @@ typedef struct wi_position wi_position;
  * Holds an aditional internal struct for bookkeeping.
  */
 typedef struct wi_session wi_session;
+
+/*
+ * A wrapper around `char*` to include string-length.
+ * Does not use a delimiting '\0'.
+ * Owns the `char*` memory.
+ * The length is given in `wi_code_lengths` to include both byte length and
+ * visual length, because that's interesting for this library.
+ */
+typedef struct wi_string wi_string;
+
+/*
+ * Same as a `wi_string`, but does not own the `char*` memory.
+ */
+typedef struct wi_string wi_string_view;
 
 /*
  * A container for wi_content's. Holds a 2D array of contents, a width and
@@ -118,21 +130,20 @@ struct wi_border {
 	char* unfocussed_colour;
 };
 
-struct wi_code_lengths {
-	unsigned short width;
-	unsigned short bytes;
+struct wi_string_length {
+	unsigned int width;
+	unsigned int bytes;
+};
+
+struct wi_string {
+	char* string;
+	wi_string_length length;
 };
 
 struct wi_content {
-	/* (HEAP) */
-	char** lines;
-	/* (HEAP) Lengths excluding '\0', in visual 1-wide characters. */
-	unsigned int* line_lengths_chars;
-	/* (HEAP) Lengths excluding '\0', in bytes. */
-	unsigned int* line_lengths_bytes;
-
+	wi_string_view* original;
+	wi_string_view* line_list;
 	int amount_lines;
-	int internal_amount_lines;
 };
 
 struct wi_keymap {
@@ -153,7 +164,7 @@ struct wi_session {
 	wi_position focus_pos;
 	wi_keymap* keymaps;
 
-	atomic_bool keep_running;
+	bool keep_running;
 	atomic_bool need_rerender;
 	bool running_render_thread;
 
@@ -172,7 +183,7 @@ struct wi_window {
 	int height;
 
 	/* (HEAP) */
-	wi_content*** contents;
+	wi_content** content_grid;
 	wi_border border;
 
 	bool wrap_text;
@@ -184,20 +195,19 @@ struct wi_window {
 	/* Internal variables, do not change outside library-code,
 	 * unless you really know what you're doing. */
 	struct {
-		int amount_depending;
-
-		int content_rows;
-		/* (HEAP) */
-		int* content_cols;
-
 		int rendered_width;
 		int rendered_height;
 
+		int content_grid_rows;
+		int* content_grid_cols;
+
 		/* (HEAP) */
 		wi_window** depending_windows;
+		int amount_depending;
 
-		wi_position content_offset_chars;
-		wi_position visual_cursor_position;
+		/* Cursor */
+		wi_position visual_cursor;	/* In visual chars */
+		wi_position offset_cursor;	/* In visual chars */
 
 		bool currently_focussed;
 	} internal;
