@@ -18,7 +18,7 @@ int render_function(void* args);
  * A line is defined as a series of non-newlines, ended by a newline.
  * The newline itself is stripped.
  */
-wi_content* split_lines(const char*);
+wi_content split_lines(char*);
 
 /* Decrement index-pointer when on continuation byte until not anymore */
 void skip_continuation_bytes_left(int*, const char*);
