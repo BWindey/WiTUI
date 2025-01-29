@@ -115,11 +115,11 @@ char convert_key(wi_keymap keymap) {
 void wi_scroll_up(const char _, wi_session* session) {
 	WI_UNUSED(_);
 	wi_window* focussed_window = wi_get_focussed_window(session);
-	if (focussed_window->internal.visual_cursor_position.row > 0) {
-		focussed_window->internal.visual_cursor_position.row--;
+	if (focussed_window->internal.visual_cursor.row > 0) {
+		focussed_window->internal.visual_cursor.row--;
 		atomic_store(&(session->need_rerender), true);
-	} else if (focussed_window->internal.content_offset_chars.row > 0) {
-		focussed_window->internal.content_offset_chars.row--;
+	} else if (focussed_window->internal.offset_cursor.row > 0) {
+		focussed_window->internal.offset_cursor.row--;
 		atomic_store(&(session->need_rerender), true);
 	}
 }
@@ -129,12 +129,12 @@ void wi_scroll_down(const char _, wi_session* session) {
 	wi_window* focussed_window = wi_get_focussed_window(session);
 
 	/* Aliasses for these loooooong names */
-	int* visual_row = &focussed_window->internal.visual_cursor_position.row;
-	int* offset_row = &focussed_window->internal.content_offset_chars.row;
+	int* visual_row = &focussed_window->internal.visual_cursor.row;
+	int* offset_row = &focussed_window->internal.offset_cursor.row;
 
 	const int fw_height = focussed_window->internal.rendered_height;
 	const int fw_amount_content_lines =
-		wi_get_current_window_content(focussed_window)->amount_lines;
+		wi_get_current_window_content(focussed_window).amount_lines;
 
 	/* Don't scroll further then the text */
 	if (*visual_row + *offset_row + 1 >= fw_amount_content_lines) {
@@ -161,16 +161,16 @@ void wi_scroll_left(const char _, wi_session* session) {
 	}
 
 	/* Some aliasses for these loooong names */
-	int* visual_col = &focussed_window->internal.visual_cursor_position.col;
-	int* offset_c_col = &focussed_window->internal.content_offset_chars.col;
+	int* visual_col = &focussed_window->internal.visual_cursor.col;
+	int* offset_c_col = &focussed_window->internal.offset_cursor.col;
 
 	const bool cursor_linebased = focussed_window->cursor_rendering == LINEBASED;
 
-	const wi_content* content = wi_get_current_window_content(focussed_window);
+	const wi_content content = wi_get_current_window_content(focussed_window);
 	const int current_line =
-		focussed_window->internal.content_offset_chars.row
-		+ focussed_window->internal.visual_cursor_position.row;
-	const int line_length_c = content->line_lengths_chars[current_line];
+		focussed_window->internal.offset_cursor.row
+		+ focussed_window->internal.visual_cursor.row;
+	const int line_length_c = content.line_list[current_line].length.width;
 
 	if (*offset_c_col >= line_length_c) {
 		*offset_c_col = line_length_c - 1;
@@ -201,17 +201,17 @@ void wi_scroll_right(const char _, wi_session* session) {
 	}
 
 	/* Aliasses for these loooooooong names */
-	int* visual_col = &focussed_window->internal.visual_cursor_position.col;
-	int* offset_c_col = &focussed_window->internal.content_offset_chars.col;
+	int* visual_col = &focussed_window->internal.visual_cursor.col;
+	int* offset_c_col = &focussed_window->internal.offset_cursor.col;
 
 	const int fw_width = focussed_window->internal.rendered_width;
 
-    const wi_content* content = wi_get_current_window_content(focussed_window);
+    const wi_content content = wi_get_current_window_content(focussed_window);
     const int current_line =
-		focussed_window->internal.content_offset_chars.row
-		+ focussed_window->internal.visual_cursor_position.row;
+		focussed_window->internal.offset_cursor.row
+		+ focussed_window->internal.visual_cursor.row;
 
-    const int line_length_c = content->line_lengths_chars[current_line];
+    const int line_length_c = content.line_list[current_line].length.width;
 
 	const bool cursor_linebased = focussed_window->cursor_rendering == LINEBASED;
 
@@ -325,7 +325,7 @@ int input_function(void* arg) {
 
 	raw_terminal();
 
-	while (atomic_load(&(session->keep_running))) {
+	while (session->keep_running) {
 		c = wi_get_char();
 		if (c > 0) {
 			bool alt_mod = false;
