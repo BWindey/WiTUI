@@ -3,7 +3,6 @@
 #include "wi_internals.h"
 #include "wi_functions.h"
 
-#include <stdatomic.h>  /* atomic_store */
 #include <stdbool.h>	/* true, false */
 #include <stddef.h>		/* size_t */
 #include <stdlib.h>		/* malloc(), realloc(), free() */
@@ -15,11 +14,13 @@ wi_window* wi_make_window(void) {
 
 	window->width = 10;
 	window->height = 10;
+	window->internal.rendered_width = 10;
+	window->internal.rendered_height = 10;
 
 	/* Starting without content */
-	window->contents = NULL;
-	window->internal.content_rows = 0;
-	window->internal.content_cols = NULL;
+	window->content_grid = NULL;
+	window->internal.content_grid_rows = 0;
+	window->internal.content_grid_cols = NULL;
 
 	window->border = (wi_border) {
 		.title = "",
@@ -40,8 +41,8 @@ wi_window* wi_make_window(void) {
 	window->internal.depending_windows = NULL;
 	window->internal.amount_depending = 0;
 
-	window->internal.content_offset_chars = (wi_position) { 0, 0 };
-	window->internal.visual_cursor_position = (wi_position) { 0, 0 };
+	window->internal.offset_cursor = (wi_position) { 0, 0 };
+	window->internal.visual_cursor = (wi_position) { 0, 0 };
 	window->internal.currently_focussed = false;
 
 	return window;
@@ -77,7 +78,7 @@ wi_session* wi_make_session(bool add_vim_keybindings) {
 		wi_add_keymap_to_session(session, 'q', NONE, wi_quit_rendering);
 	}
 
-	atomic_store(&session->keep_running, true);
+	session->keep_running = true;
 	session->running_render_thread = false;
 
 	return session;
@@ -179,52 +180,48 @@ wi_session* wi_add_window_to_session(wi_session* session, wi_window* window, int
 	return session;
 }
 
-wi_window* wi_add_content_to_window(
-	wi_window* window,
-	char* content,
-	const wi_position position
-) {
-	wi_content* split_content = split_lines(content);
+wi_window* wi_add_content_to_window(wi_window* window, char* content, const wi_position position) {
+	wi_content split_content = split_lines(content);
 
 	/* Grow rows if necessary */
-	if (position.row >= window->internal.content_rows) {
-		window->contents = (wi_content***) realloc(
-			window->contents,
-	 		(position.row + 1) * sizeof(wi_content**)
+	if (position.row >= window->internal.content_grid_rows) {
+		window->content_grid = (wi_content**) realloc(
+			window->content_grid,
+	 		(position.row + 1) * sizeof(wi_content*)
 		);
-		wiAssert(window->contents != NULL, "Failed to grow array when adding content to a window");
+		wiAssert(window->content_grid != NULL, "Failed to grow array when adding content to a window");
 
-		window->internal.content_cols = (int*) realloc(
-			window->internal.content_cols,
+		window->internal.content_grid_cols = (int*) realloc(
+			window->internal.content_grid_cols,
 	 		(position.row + 1) * sizeof(int)
 		);
-		wiAssert(window->internal.content_cols != NULL, "Failed to grow array when adding content to a window");
+		wiAssert(window->internal.content_grid_cols != NULL, "Failed to grow array when adding content to a window");
 
 		/* Fill in the spaces between old and new */
-		for (int i = window->internal.content_rows; i <= position.row; i++) {
-			window->contents[i] = NULL;
-			window->internal.content_cols[i] = 0;
+		for (int i = window->internal.content_grid_rows; i <= position.row; i++) {
+			window->content_grid[i] = NULL;
+			window->internal.content_grid_cols[i] = 0;
 		}
-		window->internal.content_rows = position.row + 1;
+		window->internal.content_grid_rows = position.row + 1;
 	}
 
 	/* Grow cols if necessary */
-	if (position.col >= window->internal.content_cols[position.row]) {
-		window->contents[position.row] = (wi_content**) realloc(
-			window->contents[position.row],
-			(position.col + 1) * sizeof(wi_content*)
+	if (position.col >= window->internal.content_grid_cols[position.row]) {
+		window->content_grid[position.row] = (wi_content*) realloc(
+			window->content_grid[position.row],
+			(position.col + 1) * sizeof(wi_content)
 		);
-		wiAssert(window->contents[position.row] != NULL, "Failed to grow array when adding content to a window");
+		wiAssert(window->content_grid[position.row] != NULL, "Failed to grow array when adding content to a window");
 
 		/* Fill in the spaces between old and new */
-		for (int i = window->internal.content_cols[position.row]; i < position.col; i++) {
-			window->internal.content_cols[i] = 0;
+		for (int i = window->internal.content_grid_cols[position.row]; i < position.col; i++) {
+			window->internal.content_grid_cols[i] = 0;
 		}
 
-		window->internal.content_cols[position.row] = position.col + 1;
+		window->internal.content_grid_cols[position.row] = position.col + 1;
 	}
 
-	window->contents[position.row][position.col] = split_content;
+	window->content_grid[position.row][position.col] = split_content;
 
 	return window;
 }
@@ -256,58 +253,58 @@ wi_window* wi_get_focussed_window(wi_session* session) {
 	return session->windows[s_cursor_row][s_cursor_col];
 }
 
-wi_content* wi_get_current_window_content(const wi_window* window) {
+wi_content wi_get_current_window_content(const wi_window* window) {
 	if (window->depends_on == NULL) {
 		wiAssert(
-			window->contents != NULL,
+			window->content_grid != NULL,
 			"contents can not be NULL for non-depending window"
 		);
-		return window->contents[0][0];
+		return window->content_grid[0][0];
 	}
 	wi_window* dep = window->depends_on;
-	wi_position dep_visual_cursor_pos = dep->internal.visual_cursor_position;
-	wi_position dep_content_offset = dep->internal.content_offset_chars;
+	wi_position dep_visual_cursor_pos = dep->internal.visual_cursor;
+	wi_position dep_content_offset = dep->internal.offset_cursor;
 
 	int row = dep_visual_cursor_pos.row + dep_content_offset.row;
 	int col = dep_visual_cursor_pos.col + dep_content_offset.col;
 
-	if (row >= window->internal.content_rows) {
-		row = window->internal.content_rows - 1;
+	if (row >= window->internal.content_grid_rows) {
+		row = window->internal.content_grid_rows - 1;
 	}
-	if (col >= window->internal.content_cols[row]) {
-		col = window->internal.content_cols[row] - 1;
+	if (col >= window->internal.content_grid_cols[row]) {
+		col = window->internal.content_grid_cols[row] - 1;
 	}
 
-	while (col > 0 && window->contents[row][col] == NULL) {
+	while (col > 0 && window->content_grid[row][col].original == NULL) {
 		col--;
 	}
-	while (row > 0 && window->contents[row][col] == NULL) {
+	while (row > 0 && window->content_grid[row][col].original== NULL) {
 		row--;
 	}
 
 	wiAssert(
-		window->contents[row][col] != NULL,
+		window->content_grid[row][col].original != NULL,
 		"Could not find non-NULL content for a depending window"
 	);
 
-	return window->contents[row][col];
+	return window->content_grid[row][col];
 }
 
 wi_position wi_get_window_cursor_pos(const wi_window *window) {
-	const wi_content* window_content = wi_get_current_window_content(window);
-	const wi_position visual = window->internal.visual_cursor_position;
-	const wi_position offset = window->internal.content_offset_chars;
+	const wi_content window_content = wi_get_current_window_content(window);
+	const wi_position visual = window->internal.visual_cursor;
+	const wi_position offset = window->internal.offset_cursor;
 
 	wi_position actual = (wi_position) {
 		.row = visual.row + offset.row,
 		.col = visual.col + offset.col
 	};
 
-	if (actual.row >= window_content->amount_lines) {
-		actual.row = window_content->amount_lines - 1;
+	if (actual.row >= window_content.amount_lines) {
+		actual.row = window_content.amount_lines - 1;
 	}
-	if (actual.col >= (int) window_content->line_lengths_chars[actual.row]) {
-		actual.col = window_content->line_lengths_chars[actual.row] - 1;
+	if (actual.col >= (int) window_content.line_list[actual.row].length.width) {
+		actual.col = window_content.line_list[actual.row].length.width - 1;
 	}
 
 	return actual;
@@ -315,7 +312,7 @@ wi_position wi_get_window_cursor_pos(const wi_window *window) {
 
 void wi_quit_rendering(const char _, wi_session* session) {
 	(void)(_);
-	atomic_store(&(session->keep_running), false);
+	session->keep_running = false;
 }
 
 void wi_quit_rendering_and_wait(const char _, wi_session* session) {
@@ -347,23 +344,17 @@ void wi_free_session(wi_session* session) {
 void wi_free_window(wi_window* window) {
 	free(window->internal.depending_windows);
 
-	for (int i = 0; i < window->internal.content_rows; i++) {
-		for (int j = 0; j < window->internal.content_cols[i]; j++) {
-			wi_free_content(window->contents[i][j]);
+	for (int i = 0; i < window->internal.content_grid_rows; i++) {
+		for (int j = 0; j < window->internal.content_grid_cols[i]; j++) {
+			wi_free_content(window->content_grid[i][j]);
 		}
-		free(window->contents[i]);
+		free(window->content_grid[i]);
 	}
-	free(window->contents);
-	free(window->internal.content_cols);
+	free(window->content_grid);
+	free(window->internal.content_grid_cols);
 	free(window);
 }
 
-void wi_free_content(wi_content* content) {
-	for (int i = 0; i < content->amount_lines; i++) {
-		free(content->lines[i]);
-	}
-	free(content->lines);
-	free(content->line_lengths_bytes);
-	free(content->line_lengths_chars);
-	free(content);
+void wi_free_content(wi_content content) {
+	free(content.line_list);
 }
