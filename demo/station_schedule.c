@@ -11,9 +11,10 @@ void show_and_exit(const char key, wi_session* session) {
 	wi_window* table = session->windows[1][0];
 	wi_window* extra = session->windows[1][1];
 
-	char** table_lines = wi_get_current_window_content(table)->lines;
+	wi_content table_lines = wi_get_current_window_content(table);
 	wi_position cur_pos = wi_get_window_cursor_pos(table);
-	char* table_line = table_lines[cur_pos.row];
+	wi_string_view table_line_string = table_lines.line_list[cur_pos.row];
+	char* table_line = table_line_string.string;
 
 	printf("The train to ");
 	while (*table_line != ' ' && *table_line != '\0') {
@@ -47,9 +48,12 @@ void show_and_exit(const char key, wi_session* session) {
 	}
 	putchar('\n');
 
-	wi_content* extra_content = wi_get_current_window_content(extra);
-	for (int i = 0; i < extra_content->amount_lines; i++) {
-		printf("%s\n", extra_content->lines[i]);
+	wi_content extra_content = wi_get_current_window_content(extra);
+	for (int i = 0; i < extra_content.amount_lines; i++) {
+		printf(
+			"%.*s\n", extra_content.line_list[i].length.bytes,
+			extra_content.line_list[i].string
+		);
 	}
 }
 
