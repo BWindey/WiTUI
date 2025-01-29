@@ -194,7 +194,7 @@ void wi_free_window(wi_window*);
  * to the library with 'wi_add_content_to_window()', but an internal
  * representation.
  */
-void wi_free_content(wi_content*);
+void wi_free_content(wi_content);
 
 
 
@@ -256,7 +256,7 @@ void wi_move_focus_right(const char, wi_session* session);
  *
  * @returns: wi_content struct with current window content
  */
-wi_content* wi_get_current_window_content(const wi_window* window);
+wi_content wi_get_current_window_content(const wi_window* window);
 
 /*
  * Get the current cursor-position from a window.
@@ -305,7 +305,7 @@ void wi_quit_rendering_and_wait(const char, wi_session* session);
  * visual space the characters takes, and the col is the amount of bytes the
  * character takes.
  */
-wi_code_lengths wi_char_byte_size(const char*);
+wi_string_length wi_char_byte_size(const char*);
 
 /*
  * A function that returns a pointer to the currently focussed window.
