@@ -5,11 +5,6 @@
 #include <stdio.h>
 #include <stdlib.h> 	/* malloc(), realloc() */
 
-#define INITIALISE_LINE_LIST_EL(i, char_p) \
-	line_list[i].length.width = 0; \
-	line_list[i].length.bytes = 0; \
-	line_list[i].string = char_p;
-
 wi_string_length wi_char_byte_size(const char* c) {
 	if (*c == '\0') {
 		return (wi_string_length) { .width = 0, .bytes = 1 };
@@ -30,6 +25,25 @@ wi_string_length wi_char_byte_size(const char* c) {
 		return (wi_string_length) { .width = 1, .bytes = 1 };
 	}
 }
+
+wi_string_length wi_strlen(const char* c) {
+	wi_string_length result = { 0, 0 };
+	wi_string_length charlen;
+
+	while (*c != '\0') {
+		charlen = wi_char_byte_size(c);
+		result.bytes += charlen.bytes;
+		result.width += charlen.width;
+		c += charlen.bytes;
+	}
+
+	return result;
+}
+
+#define INITIALISE_LINE_LIST_EL(i, char_p) \
+	line_list[i].length.width = 0; \
+	line_list[i].length.bytes = 0; \
+	line_list[i].string = char_p;
 
 wi_content split_lines(char* content) {
 	wi_string_view* original = (wi_string*) malloc(sizeof(wi_string));

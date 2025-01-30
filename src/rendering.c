@@ -421,10 +421,16 @@ void render_content(const wi_window* window, const int horizontal_offset) {
  * The only magic happening, is the alignment.
  */
 void render_horizontal_border(
-	const char* left, const char* mid, const char* right,
-	const wi_info_alignment alignment, const char* info, const int width
+	const wi_border border, bool top, const int width
 ) {
-	int info_length = info == NULL ? 0 : strlen(info);
+	const char* info = top ? border.title : border.footer;
+	const wi_info_alignment alignment =
+		top ? border.title_alignment : border.footer_alignment;
+	const char* left = top ? border.corner_top_left : border.corner_bottom_left;
+	const char* right = top ? border.corner_top_right : border.corner_bottom_right;
+	const char* mid = top ? border.side_top : border.side_bottom;
+
+	int info_length = info == NULL ? 0 : wi_strlen(info).width;
 	int left_pad = 0;
 	int right_pad = 0;
 
@@ -447,19 +453,27 @@ void render_horizontal_border(
 			break;
 	}
 
-	printf("%s", left);
+	if (border.side_left) printf("%s", left);
 	for (int _ = 0; _ < left_pad; _++) {
 		printf("%s", mid);
 	}
 
-	/* Restrain info-length if necessary (can't be longer then window-width) */
-	printf("%.*s", info_length, info);
+	/* Restrain info-length if necessary (can't be longer then window-width)
+	 * while keeping unicode in mind */
+	wi_string_length temp;
+	wi_string_length printed = { 0, 0 };
+	while ((int) printed.width < info_length) {
+		temp = wi_char_byte_size(info + printed.bytes);
+		printf("%.*s", temp.bytes, info + printed.bytes);
+		printed.bytes += temp.bytes;
+		printed.width += temp.width;
+	}
 
 	for (int _ = 0; _ < right_pad; _++) {
 		printf("%s", mid);
 	}
 
-	printf("%s", right);
+	if (border.side_right) printf("%s", right);
 }
 
 /*
@@ -479,10 +493,7 @@ void render_window(const wi_window* window, const int horizontal_offset) {
 
 		cursor_move_right(horizontal_offset);
 		printf("%s", effect);
-		render_horizontal_border(
-			border.corner_top_left, border.side_top, border.corner_top_right,
-			border.title_alignment, border.title, window->internal.rendered_width
-		);
+		render_horizontal_border(border, true, window->internal.rendered_width);
 		printf("\033[0m\n");
 	}
 
@@ -491,10 +502,7 @@ void render_window(const wi_window* window, const int horizontal_offset) {
 	if (border.side_bottom != NULL) {
 		cursor_move_right(horizontal_offset);
 		printf("%s", effect);
-		render_horizontal_border(
-			border.corner_bottom_left, border.side_bottom, border.corner_bottom_right,
-			border.footer_alignment, border.footer, window->internal.rendered_width
-		);
+		render_horizontal_border(border, false, window->internal.rendered_width);
 		printf("\033[0m\n");
 	}
 }
@@ -524,7 +532,14 @@ int wi_render_frame(wi_session* session) {
 			}
 			cursor_move_up(printed_height);
 
-			accumulated_row_width += window->internal.rendered_width + 2;
+			accumulated_row_width += window->internal.rendered_width;
+			if (window->border.side_left != NULL) {
+				accumulated_row_width += 1;
+			}
+			if (window->border.side_right != NULL) {
+				accumulated_row_width += 1;
+			}
+
 			if (printed_height > max_row_height) {
 				max_row_height = printed_height;
 			}

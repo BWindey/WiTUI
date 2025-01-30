@@ -1,6 +1,6 @@
 #include <stdbool.h>	/* true, false */
-
-#include "wi_tui.h"
+#include "wi_data.h"
+#include "wi_functions.h"
 
 int main(void)
 {
@@ -13,13 +13,13 @@ int main(void)
 
 	wi_session* session = wi_make_session(true);
 
-	window02->wrap_text = true;
+	/* window02->wrap_text = true; */
 
-	/*window01->border = (wi_border) { 0 };*/
 	window01->border.focussed_colour = "\033[94m";
 	window01->border.unfocussed_colour = "\033[34m\033[2m";
-	window01->border.title = " This is a nice title ";
+	window01->border.title = "\u257E" "This is a nice title" "\u257C";
 	window01->border.footer_alignment = CENTER;
+	/* window01->border.side_left = (char*)0; */
 
 	window02->cursor_rendering = LINEBASED;
 	window20->cursor_rendering = LINEBASED;

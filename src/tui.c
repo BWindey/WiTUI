@@ -356,5 +356,6 @@ void wi_free_window(wi_window* window) {
 }
 
 void wi_free_content(wi_content content) {
+	free(content.original);
 	free(content.line_list);
 }

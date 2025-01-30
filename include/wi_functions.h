@@ -308,6 +308,12 @@ void wi_quit_rendering_and_wait(const char, wi_session* session);
 wi_string_length wi_char_byte_size(const char*);
 
 /*
+ * A function like `strlen()`, but returns both byte- and visible length.
+ * Does not include the ending nullbyte.
+ */
+wi_string_length wi_strlen(const char*);
+
+/*
  * A function that returns a pointer to the currently focussed window.
  * Because the column-number can be out of bounds, I wanted to provide this
  * abstraction.
