@@ -1,56 +1,50 @@
-# Directories
-SRCDIR := src
-INCDIR := include
-OBJDIR := obj
-LIBDIR := lib
-DEMODIR := demo
-DEMO_OUTDIR := $(DEMODIR)/out
-
-# Compiler and flags
-CC = gcc
-CFLAGS = -I$(INCDIR) -Isubmodules/WiTesting -Wall -Wextra -pedantic
+CFLAGS := -g -Wall -Wextra -Wpedantic -Iinclude
 
 
-# Library-file name
-LIBRARY = $(LIBDIR)/libwitui.a
+all: lib demo
 
-# Source and object files
-SRC_FILES = $(wildcard $(SRCDIR)/*.c)
-OBJ_FILES = $(patsubst $(SRCDIR)/%.c,$(OBJDIR)/%.o,$(SRC_FILES))
+lib: lib/libwitui.a
 
-# Find all .c files in the demo/ directory
-DEMO_SOURCES := $(wildcard $(DEMODIR)/*.c)
-# Generate a list of executables, one for each .c file
-DEMO_PROGRAMS := $(patsubst $(DEMODIR)/%.c, $(DEMO_OUTDIR)/%.out, $(DEMO_SOURCES))
+demo: demo/out/simple_demo.out demo/out/station_schedule.out
 
 
-# Default target to build the library
-all: $(LIBRARY)
-
-demo: $(DEMO_PROGRAMS)
-
-
-# Rule to create the static library
-$(LIBRARY): $(OBJ_FILES)
-	@mkdir -p $(LIBDIR)
-	ar rcs $@ $^
-
-# Rule to compile object files
-$(OBJDIR)/%.o: $(SRCDIR)/%.c
-	@mkdir -p $(OBJDIR)
-	$(CC) $(CFLAGS) -c $< -o $@
+lib/libwitui.a: obj/handle_input.o obj/rendering.o obj/tui.o obj/utility.o
+	@mkdir -p $(@D) # Create lib/ if needed
+	ar rcs $@ $^   # Bundle al target-inputs into an archive
 
 
-# Rule to compile each .c file into its corresponding executable
-$(DEMO_OUTDIR)/%.out: $(DEMODIR)/%.c $(LIBRARY)
-	@mkdir -p $(DEMO_OUTDIR)
-	$(CC) $(CFLAGS) -g $< -o $@ $(LIBRARY)
+demo/out/simple_demo.out: lib/libwitui.a include/wi_data.h include/wi_functions.h
+	@mkdir -p $(@D) # Create lib/ if needed
+	gcc $(CFLAGS) demo/simple_demo.c -o $@ -Llib -lwitui
 
 
-# Clean up
+demo/out/station_schedule.out: lib/libwitui.a include/wi_data.h include/wi_functions.h
+	@mkdir -p $(@D) # Create lib/ if needed
+	gcc $(CFLAGS) demo/station_schedule.c -o $@ -Llib -lwitui
+
+
+COMMON := include/wiAssert.h include/wi_internals.h
+
+obj/handle_input.o: $(COMMON) include/wi_functions.h src/handle_input.c
+	@mkdir -p $(@D) # Create lib/ if needed
+	gcc $(CFLAGS) -c src/handle_input.c -o $@
+
+obj/rendering.o: $(COMMON) include/wi_functions.h src/rendering.c
+	@mkdir -p $(@D) # Create lib/ if needed
+	gcc $(CFLAGS) -c src/rendering.c -o $@
+
+obj/tui.o: $(COMMON) include/wi_functions.h include/wi_data.h src/tui.c
+	@mkdir -p $(@D) # Create lib/ if needed
+	gcc $(CFLAGS) -c src/tui.c -o $@
+
+obj/utility.o: $(COMMON) include/wi_data.h src/utility.c
+	@mkdir -p $(@D) # Create lib/ if needed
+	gcc $(CFLAGS) -c src/utility.c -o $@
+
+
 clean:
-	rm -r $(OBJDIR) $(LIBDIR)
-	rm -r $(DEMO_OUTDIR) 2>/dev/null
+	-rm -r demo/out/
+	-rm -r obj/
+	-rm -r lib/
 
-
-.PHONY: clean all demo
+.PHONY: all clean lib demo
