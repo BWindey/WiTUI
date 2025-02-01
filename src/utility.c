@@ -46,9 +46,9 @@ wi_string_length wi_strlen(const char* c) {
 	line_list[i].string = char_p;
 
 wi_content split_lines(char* content) {
-	wi_string_view* original = (wi_string*) malloc(sizeof(wi_string));
-	original->string = content;
-	original->length = (wi_string_length) { 0, 0 };
+	wi_string_view original;
+	original.string = content;
+	original.length = (wi_string_length) { 0, 0 };
 
 	int amount_lines = 0;
 	int line_list_capacity = 10;
@@ -57,7 +57,7 @@ wi_content split_lines(char* content) {
 	);
 
 	/* Initialise */
-	INITIALISE_LINE_LIST_EL(0, original->string)
+	INITIALISE_LINE_LIST_EL(0, original.string)
 
 	int bytes = 0;
 	int chars = 0;
@@ -95,8 +95,8 @@ wi_content split_lines(char* content) {
 		}
 	}
 
-	original->length.width = chars;
-	original->length.bytes = bytes;
+	original.length.width = chars;
+	original.length.bytes = bytes;
 
 	return (wi_content) {
 		.original = original,
