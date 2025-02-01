@@ -141,7 +141,7 @@ struct wi_string {
 };
 
 struct wi_content {
-	wi_string_view* original;
+	wi_string_view original;
 	wi_string_view* line_list;
 	int amount_lines;
 };
@@ -173,6 +173,9 @@ struct wi_session {
 	struct {
 		int amount_rows;
 		int* amount_cols;
+		int capacity_rows;
+		int* capacity_cols;
+
 		int amount_keymaps;
 		int keymap_array_size;
 	} internal;
@@ -200,10 +203,13 @@ struct wi_window {
 
 		int content_grid_rows;
 		int* content_grid_cols;
+		int grid_row_capacity;
+		int* grid_col_capacity;
 
 		/* (HEAP) */
 		wi_window** depending_windows;
 		int amount_depending;
+		int depending_capacity;
 
 		/* Cursor */
 		wi_position visual_cursor;	/* In visual chars */

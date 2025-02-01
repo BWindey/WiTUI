@@ -9,6 +9,29 @@
 #include <string.h>		/* strdup(), strchr(), strlen() */
 #include <threads.h>	/* thrd_sleep() */
 
+/* Fore safety this is undeffed at the end of the file */
+#define MALLOC_ARRAY(ARRAY, SIZE, TYPE) \
+	ARRAY = (TYPE*) malloc((SIZE) * sizeof(TYPE)); \
+	wiAssert(ARRAY != NULL, "Failed to allocate array '" #ARRAY "'");
+
+#define CALLOC_ARRAY(ARRAY, SIZE, TYPE, INIT) \
+	ARRAY = (TYPE*) malloc((SIZE) * sizeof(TYPE)); \
+	wiAssert(ARRAY != NULL, "Failed to allocate array '" #ARRAY "'"); \
+	for (int i = 0; i < (SIZE); i++) { \
+		ARRAY[i] = (TYPE) INIT; \
+	}
+
+#define REALLOC_ARRAY(ARRAY, NEW_SIZE, TYPE) \
+	ARRAY = (TYPE*) realloc(ARRAY, (NEW_SIZE) * sizeof(TYPE)); \
+	wiAssert(ARRAY != NULL, "Failed to grow array '" #ARRAY "'");
+
+#define RECALLOC_ARRAY(ARRAY, NEW_SIZE, TYPE, OLD_SIZE, INIT) \
+	ARRAY = (TYPE*) realloc(ARRAY, (NEW_SIZE) * sizeof(TYPE)); \
+	wiAssert(ARRAY != NULL, "Failed to grow array '" #ARRAY "'"); \
+	for (int i = OLD_SIZE; i < NEW_SIZE; i++) { \
+		ARRAY[i] = (TYPE) INIT; \
+	}
+
 wi_window* wi_make_window(void) {
 	wi_window* window = (wi_window*) malloc(sizeof(wi_window));
 
@@ -17,10 +40,15 @@ wi_window* wi_make_window(void) {
 	window->internal.rendered_width = 10;
 	window->internal.rendered_height = 10;
 
-	/* Starting without content */
-	window->content_grid = NULL;
+	/* Start with 2x2 array */
+	MALLOC_ARRAY(window->content_grid, 2, wi_content*);
+	CALLOC_ARRAY(window->content_grid[0], 2, wi_content, { .line_list = NULL });
+	CALLOC_ARRAY(window->content_grid[1], 2, wi_content, { .line_list = NULL });
+
 	window->internal.content_grid_rows = 0;
-	window->internal.content_grid_cols = NULL;
+	window->internal.grid_row_capacity = 2;
+	CALLOC_ARRAY(window->internal.content_grid_cols, 2, int, 0);
+	CALLOC_ARRAY(window->internal.grid_col_capacity, 2, int, 2);
 
 	window->border = (wi_border) {
 		.title = "",
@@ -38,8 +66,9 @@ wi_window* wi_make_window(void) {
 	window->cursor_rendering = POINTBASED;
 
 	window->depends_on = NULL;
-	window->internal.depending_windows = NULL;
+	CALLOC_ARRAY(window->internal.depending_windows, 2, wi_window*, NULL);
 	window->internal.amount_depending = 0;
+	window->internal.depending_capacity = 2;
 
 	window->internal.offset_cursor = (wi_position) { 0, 0 };
 	window->internal.visual_cursor = (wi_position) { 0, 0 };
@@ -51,18 +80,23 @@ wi_window* wi_make_window(void) {
 wi_session* wi_make_session(bool add_vim_keybindings) {
 	wi_session* session = (wi_session*) malloc(sizeof(wi_session));
 
-	/* Starting with a 1 empty row */
-	session->windows = NULL;
+	/* Starting with a 2x2 empty grid */
+	MALLOC_ARRAY(session->windows, 2, wi_window**);
+	MALLOC_ARRAY(session->windows[0], 2, wi_window*);
+	MALLOC_ARRAY(session->windows[1], 2, wi_window*);
+
 	session->internal.amount_rows = 0;
-	session->internal.amount_cols = NULL;
+	session->internal.capacity_rows = 2;
+	CALLOC_ARRAY(session->internal.amount_cols, 2, int, 0);
+	CALLOC_ARRAY(session->internal.capacity_cols, 2, int, 2);
 
 	session->start_clear_screen = false;
 	session->focus_pos = (wi_position) { 0, 0 };
 
-	/* Start with room for 15, that's enough room for 6 extra keymaps without
-	 * re-allocating. Should be enough for most people. */
+	/* Start with room for 15, so that when used with the standard vim keybinds,
+	 * there is still room for 6 custom keymaps to minimise reallocs. */
 	int keymap_array_size = 15;
-	session->keymaps = (wi_keymap*) malloc(keymap_array_size * sizeof(wi_keymap));
+	MALLOC_ARRAY(session->keymaps, keymap_array_size, wi_keymap);
 	session->internal.keymap_array_size = keymap_array_size;
 	session->internal.amount_keymaps = 0;
 
@@ -103,14 +137,7 @@ wi_session* wi_add_keymap_to_session(
 	/* Append keymap to the end of the array, but first grow it if necessary */
 	if (session->internal.amount_keymaps == session->internal.keymap_array_size) {
 		session->internal.keymap_array_size += 15;
-		session->keymaps = (wi_keymap*) realloc(
-			session->keymaps,
-			session->internal.keymap_array_size * sizeof(wi_keymap)
-		);
-		wiAssert(
-			session->keymaps != NULL,
-			"Failed to grow keymap array when adding keymap to session"
-		);
+		REALLOC_ARRAY(session->keymaps, session->internal.keymap_array_size, wi_keymap);
 	}
 	session->keymaps[session->internal.amount_keymaps] = (wi_keymap) {
 		.key = key,
@@ -155,47 +182,53 @@ wi_session* wi_update_keymap_from_session(
 }
 
 wi_session* wi_add_window_to_session(wi_session* session, wi_window* window, int row) {
-	/* Add extra row if necessary */
+	/* When row too big, just add to new row at end. */
 	if (row >= session->internal.amount_rows) {
 		row = session->internal.amount_rows;
 		session->internal.amount_rows++;
+	}
+	/* Grow array of window-rows if needed. */
+	if (row >= session->internal.capacity_rows) {
+		int old_capacity = session->internal.capacity_rows;
+		int new_capacity = session->internal.capacity_rows * 2;
+		session->internal.capacity_rows = new_capacity;
+		REALLOC_ARRAY(session->windows, new_capacity, wi_window**);
 
-		session->windows = realloc(session->windows, (row + 1) * sizeof(wi_window**));
-		wiAssert(session->windows != NULL, "Something went wrong while trying to add a window to a session");
-		session->windows[row] = NULL;
+		/* Initialise new rows */
+		for (int i = old_capacity; i < new_capacity; i++) {
+			MALLOC_ARRAY(session->windows[i], 2, wi_window*);
+		}
 
-		session->internal.amount_cols = realloc(session->internal.amount_cols, (row + 1) * sizeof(int));
-		wiAssert(session->internal.amount_cols != NULL, "Something went wrong while tring to add a window to a session");
-		session->internal.amount_cols[row] = 0;
+		/* Also grow amount_cols */
+		RECALLOC_ARRAY(
+			session->internal.amount_cols, new_capacity, int, old_capacity, 0
+		);
+		RECALLOC_ARRAY(
+			session->internal.capacity_cols, new_capacity, int, old_capacity, 2
+		);
 	}
 
-	/* Grow the row */
-	int col = session->internal.amount_cols[row];
-	session->internal.amount_cols[row]++;
-	session->windows[row] = realloc(session->windows[row], session->internal.amount_cols[row] * sizeof(wi_window*));
-	wiAssert(session->windows[row] != NULL, "Something went wrong while tring to add a window to a session");
+	/* Ensure that there is enough room on the row */
+	int amount_on_row = session->internal.amount_cols[row];
+	int capacity_on_row = session->internal.capacity_cols[row];
+	if (amount_on_row + 1 >= capacity_on_row) {
+		REALLOC_ARRAY(session->windows[row], capacity_on_row * 2, wi_window*);
+		session->internal.capacity_cols[row] *= 2;
+	}
 
-	session->windows[row][col] = window;
+	session->windows[row][amount_on_row] = window;
+	session->internal.amount_cols[row] += 1;
 
 	return session;
 }
 
 wi_window* wi_add_content_to_window(wi_window* window, char* content, const wi_position position) {
 	wi_content split_content = split_lines(content);
-
+	/* TODO: I left off here */
 	/* Grow rows if necessary */
 	if (position.row >= window->internal.content_grid_rows) {
-		window->content_grid = (wi_content**) realloc(
-			window->content_grid,
-	 		(position.row + 1) * sizeof(wi_content*)
-		);
-		wiAssert(window->content_grid != NULL, "Failed to grow array when adding content to a window");
-
-		window->internal.content_grid_cols = (int*) realloc(
-			window->internal.content_grid_cols,
-	 		(position.row + 1) * sizeof(int)
-		);
-		wiAssert(window->internal.content_grid_cols != NULL, "Failed to grow array when adding content to a window");
+		REALLOC_ARRAY(window->content_grid, position.row + 1, wi_content*);
+		REALLOC_ARRAY(window->internal.content_grid_cols, position.row + 1, int);
 
 		/* Fill in the spaces between old and new */
 		for (int i = window->internal.content_grid_rows; i <= position.row; i++) {
@@ -207,15 +240,13 @@ wi_window* wi_add_content_to_window(wi_window* window, char* content, const wi_p
 
 	/* Grow cols if necessary */
 	if (position.col >= window->internal.content_grid_cols[position.row]) {
-		window->content_grid[position.row] = (wi_content*) realloc(
-			window->content_grid[position.row],
-			(position.col + 1) * sizeof(wi_content)
-		);
-		wiAssert(window->content_grid[position.row] != NULL, "Failed to grow array when adding content to a window");
+		REALLOC_ARRAY(window->content_grid[position.row], position.col + 1, wi_content);
 
 		/* Fill in the spaces between old and new */
 		for (int i = window->internal.content_grid_cols[position.row]; i < position.col; i++) {
 			window->internal.content_grid_cols[i] = 0;
+			/* TODO: seems fishy in this loop ... */
+			window->content_grid[position.row][i].line_list = NULL;
 		}
 
 		window->internal.content_grid_cols[position.row] = position.col + 1;
@@ -275,15 +306,15 @@ wi_content wi_get_current_window_content(const wi_window* window) {
 		col = window->internal.content_grid_cols[row] - 1;
 	}
 
-	while (col > 0 && window->content_grid[row][col].original == NULL) {
+	while (col > 0 && window->content_grid[row][col].line_list == NULL) {
 		col--;
 	}
-	while (row > 0 && window->content_grid[row][col].original== NULL) {
+	while (row > 0 && window->content_grid[row][col].line_list == NULL) {
 		row--;
 	}
 
 	wiAssert(
-		window->content_grid[row][col].original != NULL,
+		window->content_grid[row][col].line_list != NULL,
 		"Could not find non-NULL content for a depending window"
 	);
 
@@ -329,7 +360,7 @@ void wi_quit_rendering_and_wait(const char _, wi_session* session) {
 
 void wi_free_session(wi_session* session) {
 	/* Free all the windows... Yay */
-	for (int i = 0; i < session->internal.amount_rows; i++) {
+	for (int i = 0; i < session->internal.capacity_rows; i++) {
 		for (int j = 0; j < session->internal.amount_cols[i]; j++) {
 			wi_free_window(session->windows[i][j]);
 		}
@@ -337,6 +368,7 @@ void wi_free_session(wi_session* session) {
 	}
 	free(session->windows);
 	free(session->internal.amount_cols);
+	free(session->internal.capacity_cols);
 	free(session->keymaps);
 	free(session);
 }
@@ -356,6 +388,9 @@ void wi_free_window(wi_window* window) {
 }
 
 void wi_free_content(wi_content content) {
-	free(content.original);
 	free(content.line_list);
 }
+
+#undef MALLOC_ARRAY
+#undef CALLOC_ARRAY
+#undef REALLOC_ARRAY
