@@ -2,6 +2,13 @@
 A library to draw Terminal User Interfaces,
 specialising in showing multiple "windows".
 
+This shines in the so-called "depending windows", where a window can have
+multiple content-strings, and it will show the content according to where the
+cursor is in the window that it depends on.
+This is particularly useful in a scenario where you have a window showing a
+table, and a side-window showing extra information about the line that is
+selected in the table.
+
 Note that the displayed output will be "read-only".
 There are currently no plans to make input-text-fields.
 
