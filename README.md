@@ -10,7 +10,7 @@ table, and a side-window showing extra information about the line that is
 selected in the table.
 
 Note that the displayed output will be "read-only".
-There are currently no plans to make input-text-fields.
+There currently is no way to input text yet, though I'd like to implement that.
 
 Also note that any violations against the rules laid out here,
 or malformed strings, will result in the program aborting.
@@ -124,55 +124,10 @@ A depending window will start empty, unless it depends on the window where the
 cursor starts. Then it will behave like the cursor just moved to that position.
 
 
-### Return value
-The main rendering function will take control over the program until it has to
-stop rendering.
-At that point, it would be useful to return some kind of position.
-I decided for now that the position should be a struct with the
-window position in the session-2D-array, and the relative cursor position in the
-content of the window, and the last key pressed (see [Moving the cursor](#moving-the-cursor)).
-
-To solve the issue that sometimes you don't want to know the position of the
-cursor in latest window, each window has a setting that dictates whether or not
-it should overwrite the latest position.
-
-#### Why would you not want to know the last cursor position?
-This is necessary in a situation with depending windows.
-Imagine a session with 2 windows next to eachother.
-One holds a table, the second one (depending on the first) has a text field to
-display more info about the current selected row.
-This second window may however not be big enough to show the whole text,
-so the user may switch to that second window and scroll down.
-Upon having read the whole text, the rendering may stop.
-At that point you don't want the position inside the second window,
-but the current selected row in the first window.
-
-
-### Moving the cursor
-The user can move around in each window with the arrow-keys,
-or `hjkl` (from vim). The latter can be changed by the programmer.
-
-To stop the rendering, escape will always work. Other keybinds can be added.
-This exit-keypress will be returned alonside the cursor-position.
-This can be useful to determine whether a user wanted to confirm something,
-or just exit.
-
-To move between the different windows, the same keys are used,
-but with a modifier-key held. By default this is the control-key.
-This key can be modified by the programmer.
-
-In next versions, keybinds should become way more flexible, allowing the
-programmer to give any keybind with a callback. This callback shall take in the
-active `wi_session*` and the pressed key, and return `void`.
-The library will present some callbacks, like moving the cursor or focus.
-
-
-## Current restrictions
-This is a list of things that don't have to be completed before calling this
-working, but are things I would like to implement:
-
-- Allow user input
-
+### Custom keybindings
+The programmer can implement keybinds through a combination of a key, modifier
+and function-pointer. The library provides some good premade functions, like
+some that can move the cursor or focus.
 
 
 ## Aditional notes
@@ -185,6 +140,8 @@ border-elements.
 
 
 ## Documentation
+Before I begin, I'll start of by saying everything is 0-indexed.
+
 WiTUI works with 2 main objects (structs):
 - wi_session
 - wi_window
@@ -246,7 +203,7 @@ A session also has the following functions made for them:
     initialises all the values in the way the other functions expect.
     The defaults are:
         - `.windows` - empty
-        - `.full_screen` = `false`
+        - `.start_clear_screen` = `false`
         - `.cursor_pos` = `{ 0, 0 }`
         - `.movement_keys` = `{ 'h', 'j', 'k', 'l', CTRL }`
     It returns the created session.
@@ -297,3 +254,17 @@ A window is a struct that consists of the following values:
 - `internal` (anonymous `struct`):
     A struct with values you should not touch, they get updated by the library.
 
+
+#### Content
+Ansi escape codes in the contents (or borders) are supported, but it has to be
+noted that the library chooses to stop them at a `\n`. This is to limit the
+amount of "keeping-track" the library has to do, and is, in my opinion, not that
+bad of choice to make.
+When content is wrapped, the effects will last for the entire line, even when
+wrapped.
+
+The reason I keep track of effects when wrapping, but not when not wrapping,
+is that when lines do not wrap, the library should go look at content that is
+on the right-hand side of the window too to look for effects, which would be
+not good for performance. The library does however look to the left of the
+window for effects, as it has to count the width to correctly calculate offset.
