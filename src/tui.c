@@ -45,10 +45,8 @@ wi_window* wi_make_window(void) {
 	CALLOC_ARRAY(window->content_grid[0], 2, wi_content, { .line_list = NULL });
 	CALLOC_ARRAY(window->content_grid[1], 2, wi_content, { .line_list = NULL });
 
-	window->internal.content_grid_rows = 0;
-	window->internal.grid_row_capacity = 2;
-	CALLOC_ARRAY(window->internal.content_grid_cols, 2, int, 0);
-	CALLOC_ARRAY(window->internal.grid_col_capacity, 2, int, 2);
+	window->internal.content_grid_row_capacity = 2;
+	CALLOC_ARRAY(window->internal.content_grid_col_capacity, 2, int, 2);
 
 	window->border = (wi_border) {
 		.title = "",
@@ -224,32 +222,43 @@ wi_session* wi_add_window_to_session(wi_session* session, wi_window* window, int
 
 wi_window* wi_add_content_to_window(wi_window* window, char* content, const wi_position position) {
 	wi_content split_content = split_lines(content);
-	/* TODO: I left off here */
-	/* Grow rows if necessary */
-	if (position.row >= window->internal.content_grid_rows) {
-		REALLOC_ARRAY(window->content_grid, position.row + 1, wi_content*);
-		REALLOC_ARRAY(window->internal.content_grid_cols, position.row + 1, int);
+
+	/* Make new rows if needed */
+	int old_row_capacity = window->internal.content_grid_row_capacity;
+	if (position.row >= old_row_capacity) {
+		int new_capacity = position.row + 1 > old_row_capacity * 2
+			? position.row + 1 : old_row_capacity * 2;
+		REALLOC_ARRAY(window->content_grid, new_capacity, wi_content*);
 
 		/* Fill in the spaces between old and new */
-		for (int i = window->internal.content_grid_rows; i <= position.row; i++) {
-			window->content_grid[i] = NULL;
-			window->internal.content_grid_cols[i] = 0;
+		for (int i = old_row_capacity; i < new_capacity; i++) {
+			CALLOC_ARRAY(
+				window->content_grid[i], 2, wi_content, { .line_list = NULL }
+			);
 		}
-		window->internal.content_grid_rows = position.row + 1;
+		/* And grow the col_capacity array with the new place we got */
+		RECALLOC_ARRAY(
+			window->internal.content_grid_col_capacity, new_capacity, int,
+			old_row_capacity, 2
+		);
+		window->internal.content_grid_row_capacity = new_capacity;
 	}
 
-	/* Grow cols if necessary */
-	if (position.col >= window->internal.content_grid_cols[position.row]) {
-		REALLOC_ARRAY(window->content_grid[position.row], position.col + 1, wi_content);
+	/* Grow row if needed */
+	int old_col_capacity =
+		window->internal.content_grid_col_capacity[position.row];
+	if (position.col >= old_col_capacity) {
+		int new_capacity = position.col + 1 > old_col_capacity
+			? position.col + 1 : old_row_capacity * 2;
+		REALLOC_ARRAY(window->content_grid[position.row], new_capacity, wi_content);
 
 		/* Fill in the spaces between old and new */
-		for (int i = window->internal.content_grid_cols[position.row]; i < position.col; i++) {
-			window->internal.content_grid_cols[i] = 0;
+		for (int i = old_col_capacity; i < new_capacity; i++) {
 			/* TODO: seems fishy in this loop ... */
 			window->content_grid[position.row][i].line_list = NULL;
 		}
 
-		window->internal.content_grid_cols[position.row] = position.col + 1;
+		window->internal.content_grid_col_capacity[position.row] = position.col + 1;
 	}
 
 	window->content_grid[position.row][position.col] = split_content;
@@ -299,11 +308,11 @@ wi_content wi_get_current_window_content(const wi_window* window) {
 	int row = dep_visual_cursor_pos.row + dep_content_offset.row;
 	int col = dep_visual_cursor_pos.col + dep_content_offset.col;
 
-	if (row >= window->internal.content_grid_rows) {
-		row = window->internal.content_grid_rows - 1;
+	if (row >= window->internal.content_grid_row_capacity) {
+		row = window->internal.content_grid_row_capacity - 1;
 	}
-	if (col >= window->internal.content_grid_cols[row]) {
-		col = window->internal.content_grid_cols[row] - 1;
+	if (col >= window->internal.content_grid_col_capacity[row]) {
+		col = window->internal.content_grid_col_capacity[row] - 1;
 	}
 
 	while (col > 0 && window->content_grid[row][col].line_list == NULL) {
@@ -376,14 +385,14 @@ void wi_free_session(wi_session* session) {
 void wi_free_window(wi_window* window) {
 	free(window->internal.depending_windows);
 
-	for (int i = 0; i < window->internal.content_grid_rows; i++) {
-		for (int j = 0; j < window->internal.content_grid_cols[i]; j++) {
+	for (int i = 0; i < window->internal.content_grid_row_capacity; i++) {
+		for (int j = 0; j < window->internal.content_grid_col_capacity[i]; j++) {
 			wi_free_content(window->content_grid[i][j]);
 		}
 		free(window->content_grid[i]);
 	}
 	free(window->content_grid);
-	free(window->internal.content_grid_cols);
+	free(window->internal.content_grid_col_capacity);
 	free(window);
 }
 

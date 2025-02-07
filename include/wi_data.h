@@ -201,10 +201,8 @@ struct wi_window {
 		int rendered_width;
 		int rendered_height;
 
-		int content_grid_rows;
-		int* content_grid_cols;
-		int grid_row_capacity;
-		int* grid_col_capacity;
+		int content_grid_row_capacity;
+		int* content_grid_col_capacity;
 
 		/* (HEAP) */
 		wi_window** depending_windows;
