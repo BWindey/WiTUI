@@ -134,8 +134,11 @@ wi_session* wi_add_keymap_to_session(
 
 	/* Append keymap to the end of the array, but first grow it if necessary */
 	if (session->internal.amount_keymaps == session->internal.keymap_array_size) {
+		RECALLOC_ARRAY(
+			session->keymaps, session->internal.keymap_array_size, wi_keymap,
+			session->internal.keymap_array_size + 15, { .callback = NULL }
+		);
 		session->internal.keymap_array_size += 15;
-		REALLOC_ARRAY(session->keymaps, session->internal.keymap_array_size, wi_keymap);
 	}
 	session->keymaps[session->internal.amount_keymaps] = (wi_keymap) {
 		.key = key,
