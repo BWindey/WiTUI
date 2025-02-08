@@ -94,9 +94,10 @@ wi_session* wi_make_session(bool add_vim_keybindings) {
 	/* Start with room for 15, so that when used with the standard vim keybinds,
 	 * there is still room for 6 custom keymaps to minimise reallocs. */
 	int keymap_array_size = 15;
-	MALLOC_ARRAY(session->keymaps, keymap_array_size, wi_keymap);
+	CALLOC_ARRAY(
+		session->keymaps, keymap_array_size, wi_keymap, { .callback = NULL }
+	);
 	session->internal.keymap_array_size = keymap_array_size;
-	session->internal.amount_keymaps = 0;
 
 	if (add_vim_keybindings) {
 		wi_add_keymap_to_session(session, 'h', NONE, wi_scroll_left);
@@ -121,7 +122,7 @@ wi_session* wi_add_keymap_to_session(
 	void (*callback)(const char, wi_session*)
 ) {
 	/* First check if there is an available spot inside the array */
-	for (int i = 0; i < session->internal.amount_keymaps; i++) {
+	for (int i = 0; i < session->internal.keymap_array_size; i++) {
 		if (session->keymaps[i].callback == NULL) {
 			session->keymaps[i] = (wi_keymap) {
 				.modifier = modifier,
@@ -132,20 +133,20 @@ wi_session* wi_add_keymap_to_session(
 		}
 	}
 
-	/* Append keymap to the end of the array, but first grow it if necessary */
-	if (session->internal.amount_keymaps == session->internal.keymap_array_size) {
-		RECALLOC_ARRAY(
-			session->keymaps, session->internal.keymap_array_size, wi_keymap,
-			session->internal.keymap_array_size + 15, { .callback = NULL }
-		);
-		session->internal.keymap_array_size += 15;
-	}
-	session->keymaps[session->internal.amount_keymaps] = (wi_keymap) {
+	/* If no spot, increase array size. */
+	RECALLOC_ARRAY(
+		session->keymaps,
+		session->internal.keymap_array_size + 15,
+		wi_keymap,
+		session->internal.keymap_array_size,
+		{ .callback = NULL }
+	)
+	session->keymaps[session->internal.keymap_array_size] = (wi_keymap) {
 		.key = key,
 		.modifier = modifier,
 		.callback = callback
 	};
-	session->internal.amount_keymaps++;
+	session->internal.keymap_array_size += 15;
 
 	return session;
 }
@@ -154,13 +155,10 @@ wi_session* wi_pop_keymap_from_session(
 	wi_session* session, const char key, const wi_modifier modifier
 ) {
 	wi_keymap map;
-	for (int i = 0; i < session->internal.amount_keymaps; i++) {
+	for (int i = 0; i < session->internal.keymap_array_size; i++) {
 		map = session->keymaps[i];
-		if (map.key == key && map.modifier == modifier && map.callback != NULL){
+		if (map.callback != NULL && map.key == key && map.modifier == modifier){
 			session->keymaps[i].callback = NULL;
-			if (i == session->internal.amount_keymaps - 1) {
-				session->internal.amount_keymaps--;
-			}
 			return session;
 		}
 	}
@@ -172,9 +170,9 @@ wi_session* wi_update_keymap_from_session(
 	void (*new_callback)(const char, wi_session*)
 ) {
 	wi_keymap map;
-	for (int i = 0; i < session->internal.amount_keymaps; i++) {
+	for (int i = 0; i < session->internal.keymap_array_size; i++) {
 		map = session->keymaps[i];
-		if (map.key == key && map.modifier == modifier && map.callback != NULL){
+		if (map.callback != NULL && map.key == key && map.modifier == modifier){
 			session->keymaps[i].callback = new_callback;
 			return session;
 		}

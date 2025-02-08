@@ -319,7 +319,7 @@ void wi_move_focus_right(const char _, wi_session* session) {
 int input_function(void* arg) {
 	wi_session* session = (wi_session*) arg;
 	wi_keymap* key_maps = session->keymaps;
-	int amount_maps = session->internal.amount_keymaps;
+	int amount_maps = session->internal.keymap_array_size;
 
 	char c;
 

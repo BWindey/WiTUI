@@ -176,7 +176,6 @@ struct wi_session {
 		int capacity_rows;
 		int* capacity_cols;
 
-		int amount_keymaps;
 		int keymap_array_size;
 	} internal;
 };
