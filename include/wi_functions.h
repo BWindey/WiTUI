@@ -300,10 +300,6 @@ void wi_quit_rendering_and_wait(const char, wi_session* session);
  * and ansii escape codes that take up 0 characters ('\033[...m').
  *
  * No support yet for other zero-width characters or grapheme clusters.
- *
- * Returns the result as a `wi_position`, where the row is the amount of
- * visual space the characters takes, and the col is the amount of bytes the
- * character takes.
  */
 wi_string_length wi_char_byte_size(const char*);
 
