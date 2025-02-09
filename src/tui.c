@@ -222,7 +222,12 @@ wi_session* wi_add_window_to_session(wi_session* session, wi_window* window, int
 }
 
 wi_window* wi_add_content_to_window(wi_window* window, char* content, const wi_position position) {
-	wi_content split_content = split_lines(content);
+	wi_content processed_content;
+	if (window->wrap_text) {
+		processed_content = split_lines_wrapped(content, window->width);
+	} else {
+		processed_content = split_lines(content);
+	}
 
 	/* Make new rows if needed */
 	int old_row_capacity = window->internal.content_grid_row_capacity;
@@ -262,7 +267,7 @@ wi_window* wi_add_content_to_window(wi_window* window, char* content, const wi_p
 		window->internal.content_grid_col_capacity[position.row] = position.col + 1;
 	}
 
-	window->content_grid[position.row][position.col] = split_content;
+	window->content_grid[position.row][position.col] = processed_content;
 
 	return window;
 }
