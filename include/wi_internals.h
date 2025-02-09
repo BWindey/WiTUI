@@ -20,6 +20,11 @@ int render_function(void* args);
  */
 wi_content split_lines(char*);
 
+/*
+ * Does the same as `split_lines()`, but wraps where needed.
+ */
+wi_content split_lines_wrapped(char*, int cols);
+
 /* Decrement index-pointer when on continuation byte until not anymore */
 void skip_continuation_bytes_left(int*, const char*);
 
