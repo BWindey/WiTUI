@@ -165,15 +165,7 @@ static inline void print_side_border(const char* border, const char* effect) {
 	}
 }
 
-#define NOT_IMPLEMENTED_YET false
-void render_content_wrap(const wi_window* window, const int horizontal_offset) {
-	(void)(window);
-	(void)(horizontal_offset);
-	/* TODO: */
-	wiAssert(NOT_IMPLEMENTED_YET,);
-}
-
-void render_content_no_wrap(const wi_window* window, const int horizontal_offset) {
+void render_content(const wi_window* window, const int horizontal_offset) {
 	/* Extract the needed variables */
 	const wi_content content = wi_get_current_window_content(window);
 	const int window_width    = window->internal.rendered_width;
@@ -310,14 +302,6 @@ void render_content_no_wrap(const wi_window* window, const int horizontal_offset
 		putchar('\n');
 
 		printed_rows++;
-	}
-}
-
-void render_content(const wi_window* window, const int horizontal_offset) {
-	if (window->wrap_text) {
-		render_content_wrap(window, horizontal_offset);
-	} else {
-		render_content_no_wrap(window, horizontal_offset);
 	}
 }
 
