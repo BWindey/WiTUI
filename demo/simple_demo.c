@@ -13,7 +13,7 @@ int main(void)
 
 	wi_session* session = wi_make_session(true);
 
-	/* window02->wrap_text = true; */
+	window02->wrap_text = true;
 
 	window01->border.focussed_colour = "\033[94m";
 	window01->border.unfocussed_colour = "\033[34m\033[2m";

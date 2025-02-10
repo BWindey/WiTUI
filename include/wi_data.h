@@ -135,6 +135,7 @@ struct wi_string_length {
 	unsigned int bytes;
 };
 
+/* NOTE: I'm not keeping track of size for wrapped lines */
 struct wi_string {
 	char* string;
 	wi_string_length length;

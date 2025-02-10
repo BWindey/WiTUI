@@ -42,8 +42,8 @@ wi_window* wi_make_window(void) {
 
 	/* Start with 2x2 array */
 	MALLOC_ARRAY(window->content_grid, 2, wi_content*);
-	CALLOC_ARRAY(window->content_grid[0], 2, wi_content, { .line_list = NULL });
-	CALLOC_ARRAY(window->content_grid[1], 2, wi_content, { .line_list = NULL });
+	CALLOC_ARRAY(window->content_grid[0], 2, wi_content, { .original.string = NULL });
+	CALLOC_ARRAY(window->content_grid[1], 2, wi_content, { .original.string = NULL });
 
 	window->internal.content_grid_row_capacity = 2;
 	CALLOC_ARRAY(window->internal.content_grid_col_capacity, 2, int, 2);
@@ -224,7 +224,10 @@ wi_session* wi_add_window_to_session(wi_session* session, wi_window* window, int
 wi_window* wi_add_content_to_window(wi_window* window, char* content, const wi_position position) {
 	wi_content processed_content;
 	if (window->wrap_text) {
-		processed_content = split_lines_wrapped(content, window->width);
+		processed_content = (wi_content) {
+			.original.string = content,
+			.line_list = NULL
+		};
 	} else {
 		processed_content = split_lines(content);
 	}
@@ -239,7 +242,8 @@ wi_window* wi_add_content_to_window(wi_window* window, char* content, const wi_p
 		/* Fill in the spaces between old and new */
 		for (int i = old_row_capacity; i < new_capacity; i++) {
 			CALLOC_ARRAY(
-				window->content_grid[i], 2, wi_content, { .line_list = NULL }
+				window->content_grid[i], 2,
+				wi_content, { .original.string = NULL }
 			);
 		}
 		/* And grow the col_capacity array with the new place we got */
@@ -321,15 +325,15 @@ wi_content wi_get_current_window_content(const wi_window* window) {
 		col = window->internal.content_grid_col_capacity[row] - 1;
 	}
 
-	while (col > 0 && window->content_grid[row][col].line_list == NULL) {
+	while (col > 0 && window->content_grid[row][col].original.string == NULL) {
 		col--;
 	}
-	while (row > 0 && window->content_grid[row][col].line_list == NULL) {
+	while (row > 0 && window->content_grid[row][col].original.string == NULL) {
 		row--;
 	}
 
 	wiAssert(
-		window->content_grid[row][col].line_list != NULL,
+		window->content_grid[row][col].original.string != NULL,
 		"Could not find non-NULL content for a depending window"
 	);
 
@@ -403,7 +407,9 @@ void wi_free_window(wi_window* window) {
 }
 
 void wi_free_content(wi_content content) {
-	free(content.line_list);
+	if (content.original.string != NULL) {
+		free(content.line_list);
+	}
 }
 
 #undef MALLOC_ARRAY
