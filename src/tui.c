@@ -258,15 +258,12 @@ wi_window* wi_add_content_to_window(wi_window* window, char* content, const wi_p
 	int old_col_capacity =
 		window->internal.content_grid_col_capacity[position.row];
 	if (position.col >= old_col_capacity) {
-		int new_capacity = position.col + 1 > old_col_capacity
-			? position.col + 1 : old_row_capacity * 2;
-		REALLOC_ARRAY(window->content_grid[position.row], new_capacity, wi_content);
-
-		/* Fill in the spaces between old and new */
-		for (int i = old_col_capacity; i < new_capacity; i++) {
-			/* TODO: seems fishy in this loop ... */
-			window->content_grid[position.row][i].line_list = NULL;
-		}
+		int new_capacity = position.col + 1 > old_col_capacity * 2
+			? position.col + 1 : old_col_capacity * 2;
+		RECALLOC_ARRAY(
+			window->content_grid[position.row], new_capacity, wi_content,
+			old_col_capacity, { .original.string = NULL }
+		);
 
 		window->internal.content_grid_col_capacity[position.row] = position.col + 1;
 	}
