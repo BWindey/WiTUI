@@ -316,4 +316,11 @@ wi_string_length wi_strlen(const char*);
  */
 wi_window* wi_get_focussed_window(wi_session*);
 
+/*
+ * Call this function when the contents were updated.
+ * This will re-split on '\n' for non-wrapped lines, and recalculate for
+ * wrapped lines.
+ */
+wi_window* wi_update_content(wi_window*);
+
 #endif /* !WI_TUI_FUNCTIONS_HEADER_GUARD */

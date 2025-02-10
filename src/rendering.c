@@ -151,6 +151,7 @@ bool calculate_window_dimension(wi_session* session) {
 			if (col < left_over) {
 				windows_to_compute[col]->internal.rendered_width++;
 			}
+			wi_update_content(window);
 		}
 	}
 
@@ -453,6 +454,17 @@ int render_function(void* arg) {
 
 	calculate_window_dimension(session);
 	atomic_store(&(session->need_rerender), true);
+
+	/* Wrapping windows have not yet calculated their content yet,
+	 * do that now we know the sizes. */
+	for (int i = 0; i < session->internal.amount_rows; i++) {
+		for (int j = 0; j < session->internal.amount_cols[i]; j++) {
+			wi_window* window = session->windows[i][j];
+			if (window->wrap_text) {
+				wi_update_content(window);
+			}
+		}
+	}
 
 	while (session->keep_running) {
 		bool dimensions_changed = calculate_window_dimension(session);

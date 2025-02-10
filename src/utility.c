@@ -192,6 +192,31 @@ wi_content split_lines_wrapped(char* content, int cols) {
 	};
 }
 
+wi_window* wi_update_content(wi_window* window) {
+	int width = window->internal.rendered_width;
+
+	for (int i = 0; i < window->internal.content_grid_row_capacity; i++) {
+		if (window->content_grid[i] == NULL) continue;
+		for (int j = 0; j < window->internal.content_grid_col_capacity[i]; j++) {
+			if (window->content_grid[i][j].original.string == NULL) {
+				continue;
+			}
+			if (window->wrap_text) {
+				window->content_grid[i][j] = split_lines_wrapped(
+					window->content_grid[i][j].original.string,
+					width
+				);
+			} else {
+				window->content_grid[i][j] = split_lines(
+					window->content_grid[i][j].original.string
+				);
+			}
+		}
+	}
+
+	return window;
+}
+
 void skip_continuation_bytes_left(int* p, const char* c) {
 	while (*p > 0 && (c[*p] & 0xC0) == 0x80) {
 		(*p)--;
