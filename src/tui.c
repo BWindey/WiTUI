@@ -17,8 +17,8 @@
 #define CALLOC_ARRAY(ARRAY, SIZE, TYPE, INIT) \
 	ARRAY = (TYPE*) malloc((SIZE) * sizeof(TYPE)); \
 	wiAssert(ARRAY != NULL, "Failed to allocate array '" #ARRAY "'"); \
-	for (int i = 0; i < (SIZE); i++) { \
-		ARRAY[i] = (TYPE) INIT; \
+	for (int __i = 0; __i < (SIZE); __i++) { \
+		ARRAY[__i] = (TYPE) INIT; \
 	}
 
 #define REALLOC_ARRAY(ARRAY, NEW_SIZE, TYPE) \
@@ -28,8 +28,8 @@
 #define RECALLOC_ARRAY(ARRAY, NEW_SIZE, TYPE, OLD_SIZE, INIT) \
 	ARRAY = (TYPE*) realloc(ARRAY, (NEW_SIZE) * sizeof(TYPE)); \
 	wiAssert(ARRAY != NULL, "Failed to grow array '" #ARRAY "'"); \
-	for (int i = OLD_SIZE; i < NEW_SIZE; i++) { \
-		ARRAY[i] = (TYPE) INIT; \
+	for (int __i = OLD_SIZE; __i < NEW_SIZE; __i++) { \
+		ARRAY[__i] = (TYPE) INIT; \
 	}
 
 wi_window* wi_make_window(void) {
