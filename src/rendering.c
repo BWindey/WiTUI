@@ -98,8 +98,6 @@ bool calculate_window_dimension(wi_session* session) {
 
 	const int available_width = current_size.cols;
 
-	wi_window* window;
-
 	for (int row = 0; row < session->internal.amount_rows; row++) {
 		wi_window* windows_to_compute[session->internal.amount_cols[row]];
 		int amount_to_compute = 0;
@@ -109,7 +107,7 @@ bool calculate_window_dimension(wi_session* session) {
 		/* Find windows with width -1,
 		 * the others already can have their rendered width */
 		for (int col = 0; col < session->internal.amount_cols[row]; col++) {
-			window = session->windows[row][col];
+			wi_window* window = session->windows[row][col];
 			if (window->width == -1) {
 				windows_to_compute[amount_to_compute] = window;
 				amount_to_compute++;
