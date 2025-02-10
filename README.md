@@ -1,4 +1,10 @@
 # WiTUI
+
+> [!IMPORTANT]
+> This is still a work in progress, but it is nearing a first release!
+> Currently still hunting bugs and working on demos to see what features are
+> still missing.
+
 A library to draw Terminal User Interfaces,
 specialising in showing multiple "windows".
 
