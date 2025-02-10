@@ -192,6 +192,9 @@ void render_content(const wi_window* window, const int horizontal_offset) {
 	const int starting_row = window->internal.offset_cursor.row;
 	int char_offset = window->internal.offset_cursor.col;
 
+	wiAssertCallback(
+		content.line_list != NULL, restore_terminal(),
+	);
 	int cursor_line_length =
 		content.line_list[cursor.row + starting_row].length.width;
 

@@ -301,13 +301,14 @@ wi_window* wi_get_focussed_window(wi_session* session) {
 }
 
 wi_content wi_get_current_window_content(const wi_window* window) {
+	wiAssert(
+		window->content_grid != NULL,
+		"Window does not containt any contents!"
+	);
 	if (window->depends_on == NULL) {
-		wiAssert(
-			window->content_grid != NULL,
-			"contents can not be NULL for non-depending window"
-		);
 		return window->content_grid[0][0];
 	}
+
 	wi_window* dep = window->depends_on;
 	wi_position dep_visual_cursor_pos = dep->internal.visual_cursor;
 	wi_position dep_content_offset = dep->internal.offset_cursor;
