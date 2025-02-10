@@ -65,7 +65,7 @@ int main(void)
 		"At least that's what should happend...",
 		(wi_position) { 1, 0 }
 	);
-	window02->depends_on = window01;
+	wi_bind_dependency(window01, window02);
 	wi_add_content_to_window(
 		window11,
 		"Hello from window11! This is the first window on the first row.\n\n"

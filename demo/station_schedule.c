@@ -97,8 +97,8 @@ int main(void) {
 		(wi_position) { 0, 0 }
 	);
 
-	wi_add_content_to_window(window_extra, "", (wi_position) { 0, 0 });
-	wi_add_content_to_window(window_extra, "", (wi_position) { 1, 0 });
+	/* wi_add_content_to_window(window_extra, "", (wi_position) { 0, 0 }); */
+	/* wi_add_content_to_window(window_extra, "", (wi_position) { 1, 0 }); */
 	wi_add_content_to_window(
 		window_extra,
 		"This train stops in:\n"
