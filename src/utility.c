@@ -198,6 +198,18 @@ wi_content split_lines_wrapped(char* content, int cols) {
 	};
 }
 
+void update_wrapped_content(wi_content* content, int width) {
+ 	wi_content new_content = split_lines_wrapped(content->original.string, width);
+	wi_free_content(*content);
+	*content = new_content;
+}
+
+void update_content(wi_content* content) {
+ 	wi_content new_content = split_lines(content->original.string);
+	wi_free_content(*content);
+	*content = new_content;
+}
+
 wi_window* wi_update_content(wi_window* window) {
 	int width = window->internal.rendered_width;
 
@@ -208,14 +220,9 @@ wi_window* wi_update_content(wi_window* window) {
 				continue;
 			}
 			if (window->wrap_text) {
-				window->content_grid[i][j] = split_lines_wrapped(
-					window->content_grid[i][j].original.string,
-					width
-				);
+				update_wrapped_content(&(window->content_grid[i][j]), width);
 			} else {
-				window->content_grid[i][j] = split_lines(
-					window->content_grid[i][j].original.string
-				);
+				update_content(&(window->content_grid[i][j]));
 			}
 		}
 	}
