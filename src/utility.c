@@ -199,13 +199,13 @@ wi_content split_lines_wrapped(char* content, int cols) {
 }
 
 void update_wrapped_content(wi_content* content, int width) {
- 	wi_content new_content = split_lines_wrapped(content->original.string, width);
+	wi_content new_content = split_lines_wrapped(content->original.string, width);
 	wi_free_content(*content);
 	*content = new_content;
 }
 
 void update_content(wi_content* content) {
- 	wi_content new_content = split_lines(content->original.string);
+	wi_content new_content = split_lines(content->original.string);
 	wi_free_content(*content);
 	*content = new_content;
 }
