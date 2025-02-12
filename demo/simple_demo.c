@@ -14,6 +14,7 @@ int main(void)
 	wi_session* session = wi_make_session(true);
 
 	window02->wrap_text = true;
+	window20->wrap_text = true;
 
 	window01->border.focussed_colour = "\033[94m";
 	window01->border.unfocussed_colour = "\033[34m\033[2m";
@@ -27,7 +28,7 @@ int main(void)
 
 	window02->border.focussed_colour = "\033[92m";
 	/* Full RGB */
-	/*window02->border.focussed_colour = "\033[38;2;255;0;0m";*/
+	/* window02->border.focussed_colour = "\033[38;2;255;0;0m"; */
 	window02->border.unfocussed_colour = "\033[32m\033[2m";
 	window02->border.footer_alignment = LEFT;
 
