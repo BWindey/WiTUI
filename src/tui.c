@@ -190,8 +190,8 @@ wi_session* wi_add_window_to_session(wi_session* session, wi_window* window, int
 	if (row >= session->internal.capacity_rows) {
 		int old_capacity = session->internal.capacity_rows;
 		int new_capacity = session->internal.capacity_rows * 2;
-		session->internal.capacity_rows = new_capacity;
 		REALLOC_ARRAY(session->windows, new_capacity, wi_window**);
+		session->internal.capacity_rows = new_capacity;
 
 		/* Initialise new rows */
 		for (int i = old_capacity; i < new_capacity; i++) {
@@ -378,6 +378,7 @@ void wi_quit_rendering_and_wait(const char _, wi_session* session) {
 void wi_free_session(wi_session* session) {
 	/* Free all the windows... Yay */
 	for (int i = 0; i < session->internal.capacity_rows; i++) {
+		/* This is possible because amount_cols is zero-initialised */
 		for (int j = 0; j < session->internal.amount_cols[i]; j++) {
 			wi_free_window(session->windows[i][j]);
 		}
