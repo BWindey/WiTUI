@@ -3,7 +3,10 @@
 > [!IMPORTANT]
 > This is still a work in progress, but it is nearing a first release!
 > Currently still hunting bugs and working on demos to see what features are
-> still missing.
+> still missing. See this [issue](https://github.com/BWindey/WiTUI/issues/2)
+> for info on what is planned before releasing a first release.
+> From this moment though, `main` should only contain useable code, features
+> and bugs will be worked on in seperate branches.
 
 A library to draw Terminal User Interfaces,
 specialising in showing multiple "windows".
@@ -11,141 +14,106 @@ specialising in showing multiple "windows".
 This shines in the so-called "depending windows", where a window can have
 multiple content-strings, and it will show the content according to where the
 cursor is in the window that it depends on.
-This is particularly useful in a scenario where you have a window showing a
-table, and a side-window showing extra information about the line that is
-selected in the table.
-
-Note that the displayed output will be "read-only".
-There currently is no way to input text yet, though I'd like to implement that.
-
-Also note that any violations against the rules laid out here,
-or malformed strings, will result in the program aborting.
-I will however do my best to make the error-messages clear.
-
-### Current short-term TODO's:
-- Improve content:
-    - shouldn't have to wrap
-    - scrolling
-- Rethink movement in rendering, maybe I could use absolute movement by storing
-    starting position as (0, 0); then use more go_to()'s.
-    This could simplify making a border around the session itself... hmmm
-- Implement session-border
+The inspiration for this was the need to display extra info for each row in a
+table.
 
 
-## Goals
-### Window
-The programmer can define 1 or more "windows".
-Each window has the following, customisable, settings:
-- size
-- title
-- footer
-- border
-- wrap / sidescroll text
-- content
-- cursor representation
-- dependent windows
-- store latest position (see [Return value](#return-value))
+## Content-table
+- [Currently implemented](#currently-implemented)
+- [Plans](#plans)
+- [Library-flow](#library-flow)
+- [Installation and platform support](#installation-and-platform-support)
+- [Demos](#demos)
+- [Documentation](#documentation)
 
-The size of a window can have the value -1 for each value, which means it will
-make the window fill up the entire width/height of the available space.
-When multiple windows have their width set to -1, they will each get an equal
-amount of space to fill up the terminal-width.
-When the terminal width is not dividable by the amount of flexible windows,
-the remainder 'r' will be divided among the first 'r' windows on the row.
 
-I'm still thinking about how to do the vertical flexibility, I'll probably
-not implement that behaviour for now.
-<!--- TODO: how does this work for vertical expansion? --->
+## Currently implemented
+Basic features:
+- windows in rows with configurable sizes
+- flexible width available, recalculates immediatly on terminal resize
+- content in windows
+- navigating content with a cursor
+- moving focus between windows
+- fully customisable borders
 
-Scrolling and wrapping should behave the same as in vim.
+Advanced features:
+- custom powerful keymaps with callback function (defaults available)
+- show different content depending on cursor-position ("depending windows")
 
-The title and footer can internally be the same struct,
-and can have their alignement set to left, right or center.
-They will be displayed inside the border, and cut off when too large.
 
-The border consists of an array of 8 characters: 4 corners and 4 sides.
-It also can have a color that is applied to the whole border,
-and that color can be defined for when the window is focussed or not.
-By default this would be white and dim respectively.
-IMPORTANT: this border effect should not contain visible characters when
-printed, to not mess up any width calculations.
-When the border is set to `NULL`, it won't be rendered.
-Note that if you want an empty border, but not that 2 windows do not have any
-separation, you will need to have a border consisting of spaces.
+## Plans
+With the basics covered, there are a few feature that I would like to introduce:
+- input fields
+- better sizing options (window percentage)
+- keeping track of ansi escape codes when wrapping text
+- scrollbar
+- rework of drawing windows to allow redrawing only 1 window
+- session borders
+- asynchronously run `wi_show_session(...)`
 
-The cursor representation defines how the cursor is displayed.
-This can be invisible, line-based or point-based.
-The position of the cursor is shown by swapping fore- and backgroundcolours.
+More can be found in this issue: https://github.com/BWindey/WiTUI/issues/3 .
+You are welcome to post your ideas there as well.
 
-A window can also depend on other windows.
-More on that later in [Depending windows](#depending-windows).
-That section also defines how `content` looks.
-(A single content is a normal string, with newline characters to split lines.)
+
+## Library-flow
+This section shows the basic building blocks and explains what they are
+conceptually. Exact properties and definitions can be found in the
+[Documentation](#documentation).
+
+### Windows
+Windows are areas in which text can be displayed. They are a container for
+contents. A window can have more then one content-string, each on a seperate
+place in the grid. This is useful for windows which depend on another window.
+This window will look at the cursor position inside its "parent" to determine
+which content to display on the screen.
+
+> [!warning]
+> Currently, looking at the current cursor-position is not working very
+> intuitively for wrapped windows. See the behaviour in [Documentation/Cursor](#cursor).
+
+A window is also always encased inside a border. This border consists of four
+sides (left, top, right and bottom), the four corners, a colour when the window
+is in focus, and a colour when the window is out of focus,
+and a title and footer. Together they provide great customisability.
 
 ### Session
-A session is the actual thing displayed.
-It is a collection of windows, and defines their order to display.
-It has:
-- a 2D array with the windows
-- a setting whether or not to take over the whole screen
-- a setting on which window to put the cursor initially (default top-left)
-- movement settings (see [movement](#moving-the-cursor))
-- border (same as in window, but default `NULL`)
-
-Note that when there are too many windows on a row to fit on the terminal,
-the "left-over" windows will be placed on a new line.
-
-The programmer using this library could define multiple sessions
-to create something like tmux can do.
-
-
-### Depending windows
-As mentioned before, windows can depend on eachother.
-This means that the content of a window can change when the cursor moves
-inside another window that it depends on.
-
-The content of windows is stored in a 2D array.
-When updating the content of the window, it will grab the content found at
-the coordinates of the cursor. When there is no content there,
-it will use the content of the last cell left off it, then up.
-To have a depending window have new content per line,
-the rows in the contents-array should have only one item each.
-
-For the program to know which windows to update, each window will have a list
-with the windows it should update, indicated with their session-window-position.
-This presents a slight issue when you want to switch between multiple sessions
-with (some of) the same windows that depend on other windows.
-For now, I'll let the user of the library do the work of setting the right
-variables so they get updated, but it migth be worth exploring ideas to solve
-this in the library itself. A potential solution migth be a datastructure in the
-session that stores depending windows, which could be a 2D array or a map.
-
-<!-- TODO: I have not thought about this yet... -->
-When lines get wrapped because they are too long, the contents of the wrapped
-part are also moved to a new row. This could mean adding a NULL element so
-that the content of the original line is showed when hovering over the wrapped
-part.
-
-A depending window will start empty, unless it depends on the window where the
-cursor starts. Then it will behave like the cursor just moved to that position.
-
+Sessions are containers grouping windows. Windows can be placed on different
+rows inside the session, and the session provides the keymaps to move inside
+or between those windos.
+A session is also the object that the library renders.
 
 ### Custom keybindings
 The programmer can implement keybinds through a combination of a key, modifier
 and function-pointer. The library provides some good premade functions, like
 some that can move the cursor or focus.
+This allows the programmer to run arbitrary code when a user presses a button.
 
+> [!warning] Catching pressed buttons
+> Terminals do not give pressed modifiers to a running program. This limits the
+> possible keymaps. The worst one is that `CTRL + j` is the same as pressing
+> `enter`. They both return ascii code 10 (`\n`). Terminals which support
+> [Kitty's keyboard handling protocol](https://sw.kovidgoyal.net/kitty/keyboard-protocol/)
+> would be able to correctly show all different key-modifiers, but this protocol
+> is currently not (yet) supported by WiTUI.
 
-## Aditional notes
-- There is a potential for better performance by only redrawing parts of the
-screen that have changed.
+### Multithreading
+Currently the rendering and input-handling happen on 2 seperate threads.
+The rendering-entrypoint (`wi_show_session(wi_session* session)`) spawns these
+two threads and waits for them to finish. Keymaps will be executed on the input
+thread, the rendering thread just renders and checks if the terminal size
+changed.
+This means that the program calling `wi_show_session(...)` will halt until
+rendering is done, but extra logic can be implemented via keymaps.
 
-- Another feature could be to show a scrollbar when scrolling inside a window.
-This scrollbar can be part of the border, and also be configured like the other
-border-elements.
+In the future the library will probably support a way to easily run
+`wi_show_session(...)` asynchronously.
+
 
 
 ## Documentation
+> [!note]
+> Work in progress...
+
 Before I begin, I'll start of by saying everything is 0-indexed.
 
 WiTUI works with 2 main objects (structs):
