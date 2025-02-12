@@ -10,6 +10,10 @@
 	X.width += (Y).width; \
 	X.bytes += (Y).bytes;
 
+#define INCREMENT_STR_LEN(x, a) \
+	(x).width += a; \
+	(x).bytes += a;
+
 wi_string_length wi_char_byte_size(const char* c) {
 	if (*c == '\0') {
 		return (wi_string_length) { .width = 0, .bytes = 1 };
@@ -125,7 +129,7 @@ bool can_break(char string) {
 	return false;
 }
 
-wi_string_view calculate_next_line(char* content, int cols, int* bytes) {
+wi_string_view calculate_next_line(char* content, unsigned int cols, int* bytes) {
 	wi_string_view line = { .string = content };
 	wi_string_length length = { 0, 0 };
 	wi_string_length forward = { 0, 0 };
@@ -137,15 +141,17 @@ wi_string_view calculate_next_line(char* content, int cols, int* bytes) {
 			break;
 		} else if (can_break(content[forward.bytes])) {
 			length = forward;
-			if (length.width + 1 < (unsigned) cols) {
-				length.width += 1;
-				length.bytes += 1;
-				forward.width += 1;
-				forward.bytes += 1;
+			if (length.width + 1 < cols) {
+				INCREMENT_STR_LEN(length, 1);
+				INCREMENT_STR_LEN(forward, 1);
 			}
 		}
 		wi_string_length cpl = wi_char_byte_size(content + forward.bytes);
 		ADD_STR_LEN(forward, cpl);
+	}
+
+	if (content[length.bytes] == ' ' && length.width + 1 < cols) {
+		INCREMENT_STR_LEN(length, 1);
 	}
 
 	if (length.bytes == 0) {
@@ -231,3 +237,4 @@ void skip_continuation_bytes_right(int* p, const char* c, const int max) {
 
 #undef ADD_STR_LEN
 #undef INITIALISE_LINE_LIST_EL
+#undef INCREMENT_STR_LEN
