@@ -1,5 +1,19 @@
 # WiTUI
 
+> [!NOTE]
+> WiTUI is currently not being developed further as the codebase is not that
+> great anymore, and I want to try out C3. Those 2 feelings made me decide
+> to work on a successor (called `WiTuwi`) using C3.
+> As of writing the successor is nowhere near the capabilities of this one,
+> but development is fun, code is quite clean and I'm writing tests!
+> For now `WiTuwi` is still private, but as soon as it is ready for (beta) use,
+> I will make it public and link here.
+>
+> But what about `WiTUI`? It is not finished yet, and is currently not even
+> in a state that I could let you confidently use it. It is my intention to
+> come back to this library and at least polish the currently implemented
+> features so that it could also be used if you so wishes.
+
 > [!IMPORTANT]
 > This is still a work in progress, but it is nearing a first release!
 > Currently still hunting bugs and working on demos to see what features are
@@ -88,7 +102,7 @@ and function-pointer. The library provides some good premade functions, like
 some that can move the cursor or focus.
 This allows the programmer to run arbitrary code when a user presses a button.
 
-> [!warning] Catching pressed buttons
+> [!warning]
 > Terminals do not give pressed modifiers to a running program. This limits the
 > possible keymaps. The worst one is that `CTRL + j` is the same as pressing
 > `enter`. They both return ascii code 10 (`\n`). Terminals which support
